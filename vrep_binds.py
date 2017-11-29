@@ -31,7 +31,7 @@ import struct
 import sys
 import os
 import ctypes as ct
-from vrepConst import *
+from vrep_constants import *
 
 #load library
 libsimx = None
@@ -50,8 +50,8 @@ try:
 except:
     print ('----------------------------------------------------')
     print ('The remoteApi library could not be loaded. Make sure')
-    print ('it is located in the same folder as "vrep.py", or')
-    print ('appropriately adjust the file "vrep.py"')
+    print ('it is located in the same folder as "vrep_binds.py", or')
+    print ('appropriately adjust the file "vrep_binds.py"')
     print ('----------------------------------------------------')
     print ('')
 
