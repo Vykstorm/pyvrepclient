@@ -191,7 +191,7 @@ class Simulation:
         Resume la simulación.
         '''
         code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code == -1:
+        if code != 0:
             raise OperationError('Failed to resume V-rep simulation')
 
     def pause(self):
@@ -200,7 +200,7 @@ class Simulation:
         :return:
         '''
         code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code == -1:
+        if code != 0:
             raise OperationError('Failed to pause V-rep simulation')
 
 
@@ -211,7 +211,7 @@ class Simulation:
         :return:
         '''
         code = binds.simxStopSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code == -1:
+        if code != 0:
             raise OperationError('Failed to stop V-rep simulation')
 
 
