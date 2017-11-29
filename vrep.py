@@ -40,6 +40,14 @@ class InvalidArgumentValueError(Exception):
         super().__init__('Invalid value argument specified for {} parameter. Got value "{}"', arg, value)
 
 
+class OperationError(Exception):
+    '''
+    Esta clase de errores son lanzados cuando no falla algún método de la API remota V-rep
+    '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args ,**kwargs)
+
+
 
 def alive(unchecked_method):
     '''
@@ -97,6 +105,8 @@ class Client:
         if self.id == -1:
             raise ConnectionError(address)
 
+        self.simulation = Simulation(self)
+
     @alive
     def close(self):
         '''
@@ -124,6 +134,15 @@ class Client:
 
 
     @alive
+    def get_id(self):
+        '''
+        :return: Devuelve el identificador de la conexión con la API remota usadas en las llamadas a los binds
+        de la librería V-rep
+        '''
+        return self.id
+
+
+    @alive
     def __enter__(self):
         return self
 
@@ -131,4 +150,76 @@ class Client:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.is_alive():
             self.close()
+
+
+
+
+class Simulation:
+    '''
+    Esta clase permite controlar el estado de la simulación de V-rep, pudiendo ejecutarla,
+    pausarla o pararla.
+
+    e.g:
+    with Client('127.0.0.1:19997') as client:
+        sim = client.simulation
+        sim.pause()
+        ...
+        sim.resume()
+        ...
+        sim.stop()
+
+    Las instancias de esta clase pueden usarse en contextos with:
+    with Client('127.0.0.1:19997') as client:
+        with client.simulation as sim:
+            ...
+
+    El código anterior es equivalente a introducir una llamada a
+    sim.resume() al principio del bloque y sim.stop() al final (de manera
+    que al comenzar el bloque, la simulación esta activa y al finalizar queda parada)
+    '''
+
+    def __init__(self, client):
+        '''
+        Inicializa la instancia.
+        :param client: Es una instancia de la clase Client con el que se ha establecido una conexión a la servidor
+        API remoto de V-rep donde se llevará a cabo esta simulación.
+        '''
+        self.client = client
+
+    def resume(self):
+        '''
+        Resume la simulación.
+        '''
+        code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+        if code == -1:
+            raise OperationError('Failed to resume V-rep simulation')
+
+    def pause(self):
+        '''
+        La ejecución de la simulación queda pausada.
+        :return:
+        '''
+        code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+        if code == -1:
+            raise OperationError('Failed to pause V-rep simulation')
+
+
+    def stop(self):
+        '''
+        La simulación finaliza. Para comenzar otra nueva simulación, ejecutar de nuevo el método
+        resume()
+        :return:
+        '''
+        code = binds.simxStopSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+        if code == -1:
+            raise OperationError('Failed to stop V-rep simulation')
+
+
+    def __enter__(self):
+        self.resume()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tc):
+        self.stop()
+
 
