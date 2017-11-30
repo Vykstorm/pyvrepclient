@@ -477,21 +477,56 @@ class Joint(Object):
     '''
     pass
 
-class ProximitySensor(Object):
+
+class Sensor(Object):
+    '''
+    Representa un sensor. Puede ser un sensor de proximidad o un sensor de visión.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.streamed = False
+
+    def get_data(self, opmode, *args, **kwargs):
+        raise NotImplementedError()
+
+    def get_streamed_data(self, *args, **kwargs):
+        try:
+            if not self.streamed:
+                values = self.get_data(binds.simx_opmode_blocking, *args, **kwargs)
+                code = values[0]
+                if code != 0:
+                    raise Exception()
+                _values = values
+
+                values = self.get_data(binds.simx_opmode_streaming, *args, **kwargs)
+                code = values[0]
+                if not code in [0, 1]:
+                    raise Exception()
+                self.streamed = True
+                values = _values
+            else:
+                values = self.get_data(binds.simx_opmode_buffer, *args, **kwargs)
+                code = values[0]
+                if not code in [0, 1]:
+                    raise Exception()
+            return values[1:]
+        except:
+            raise Exception('Error getting streamed data from V-rep remote API server')
+
+class ProximitySensor(Sensor):
     '''
     Representa un sensor de proximidad
     '''
     pass
 
-class VisionSensor(Object):
+class VisionSensor(Sensor):
     '''
     Representa un sensor de visión.
     '''
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.streamed = False
+    def get_data(self, opmode, mode, *args ,**kwargs):
+        return binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, opmode)
 
     def get_image(self, mode = 'RGB', size = None, resample = Image.NEAREST):
         '''
@@ -509,28 +544,17 @@ class VisionSensor(Object):
         if not mode in ['RGB', 'L']:
             raise InvalidArgumentValueError('mode', mode)
 
-        if not self.streamed:
-            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_streaming)
+        native_size, pixels = self.get_streamed_data(mode)
 
-            if not code in [0, 1]:
-                raise Exception()
-            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_blocking)
-            if code != 0:
-                raise Exception()
+        try:
+            native_size = tuple(native_size)
+            pixels = np.reshape(np.array(pixels, dtype = np.uint8), native_size + ((3,) if mode == 'RGB' else ()))
+            image = Image.fromarray(pixels, mode = mode)
 
-            self.streamed = True
-        else:
-            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_buffer)
-            if not code in [0, 1]:
-                raise Exception()
-
-        native_size = tuple(native_size)
-
-        pixels = np.reshape(np.array(pixels, dtype = np.uint8), native_size + ((3,) if mode == 'RGB' else ()))
-        image = Image.fromarray(pixels, mode = mode)
-
-        if not size is None and native_size != size:
-            image = image.resize(size, resample)
+            if not size is None and native_size != size:
+                image = image.resize(size, resample)
+        except:
+            raise Exception('Error getting current image from vision sensor from V-rep remote API server')
 
         return image
 
