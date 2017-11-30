@@ -397,8 +397,16 @@ class ObjectsProxy:
             raise Exception('Failed to retrieve objects of type {} from V-rep remote api server', object_type.__name__)
 
         cls = object_type
-        objects = [cls(client = self.client, id = handler) for handler in handlers]
+        objects = []
+        cached_handlers = [object.get_id() for object in self.cached_objects.values()]
+        for handler in handlers:
+            if handler in cached_handlers:
+                object = next(iter([object for object in self.cached_objects.values() if object.get_id() == handler]))
+            else:
+                object = cls(client = self.client, id = handler)
+            objects.append(object)
         return objects
+
 
     def get_all(self):
         '''
@@ -500,6 +508,7 @@ class VisionSensor(Object):
 
         En caso de error se genera una excepción.
         '''
+        print(self.streamed)
         mode = mode.upper()
         if not mode in ['RGB', 'L']:
             raise InvalidArgumentValueError('mode', mode)
@@ -515,8 +524,8 @@ class VisionSensor(Object):
 
             self.streamed = True
         else:
-            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_streaming)
-            if code != 0:
+            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_buffer)
+            if not code in [0, 1]:
                 raise Exception()
 
         native_size = tuple(native_size)
@@ -545,4 +554,3 @@ class Shape(Object):
     Representa una figura geométrica de la escena (Esferas, cubos, ...)
     '''
     pass
-
