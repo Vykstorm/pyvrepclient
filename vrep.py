@@ -3,6 +3,7 @@
 
 import vrep_binds as binds
 from re import fullmatch
+from functools import reduce
 
 
 class _Exception(Exception):
@@ -40,12 +41,21 @@ class InvalidArgumentValueError(Exception):
         super().__init__('Invalid value argument specified for {} parameter. Got value "{}"', arg, value)
 
 
-class OperationError(Exception):
+class InvalidObjectTypeError(Exception):
     '''
-    Esta clase de errores son lanzados cuando no falla algún método de la API remota V-rep
+    Error generado al intentar obtener un objeto de la escena V-rep de un tipo específico cuando el objeto
+    no es del tipo deseado
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args ,**kwargs)
+    def __init__(self, object, expected_type):
+        super().__init__('Invalid object type. Expected "{}" object but got "{}"', object, expected_type.__name__)
+
+
+class ObjectNotFoundError(Exception):
+    '''
+    Error lanzado al intentar obtener un objeto de la escena V-rep por nombre y este no exista.
+    '''
+    def __init__(self, object_name):
+        super().__init__('Failed to get object from V-rep scene named "{}"',object_name)
 
 
 
@@ -106,6 +116,7 @@ class Client:
             raise ConnectionError(address)
 
         self.simulation = Simulation(self)
+        self.scene = Scene(self)
 
     @alive
     def close(self):
@@ -192,7 +203,7 @@ class Simulation:
         '''
         code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
         if code != 0:
-            raise OperationError('Failed to resume V-rep simulation')
+            raise Exception('Failed to resume V-rep simulation')
 
     def pause(self):
         '''
@@ -201,7 +212,7 @@ class Simulation:
         '''
         code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
         if code != 0:
-            raise OperationError('Failed to pause V-rep simulation')
+            raise Exception('Failed to pause V-rep simulation')
 
 
     def stop(self):
@@ -212,7 +223,7 @@ class Simulation:
         '''
         code = binds.simxStopSimulation(self.client.get_id(), binds.simx_opmode_blocking)
         if code != 0:
-            raise OperationError('Failed to stop V-rep simulation')
+            raise Exception('Failed to stop V-rep simulation')
 
 
     def __enter__(self):
@@ -223,3 +234,239 @@ class Simulation:
         self.stop()
 
 
+
+class Scene:
+    '''
+    Esta clase permite obtener información de los objetos de la escena del simulador V-rep.
+
+    e.g:
+
+    with Client(address = '127.0.0.1:19997') as client:
+        scene = client.scene
+
+        # Puedes consultar los objetos de la escena de varias formas. En este caso obtenemos un
+        # objeto llamado 'camera'
+        cam = scene.objects.camera
+        cam = scene.objects['camera']
+        cam = scene.get_object('camera')
+
+        # En el primer caso, si el objeto 'camera' no existe, genera una excepción. En los dos últimos
+        # casos simplemente devolvería None
+
+        # Para asegurarnos que un objeto es de un determinado tipo, podemos consultarlo de la siguiente
+        # forma...
+        cam = scene.vision_sensors.camera
+        cam = scene.vision_sensors.get('camera')
+        cam = scene.vision_sensors['camera']
+
+        # De esta forma, si 'camera' no es un sensor de visión, se genera una excepción.
+        # Puedes usar también: scene.cameras, scene.proximity_sensors, scene.joints y scene.shapes
+        # de la misma forma.
+
+        # Podemos obtener todos los objetos de la escena
+        objs = list(scene.objects)
+        objs = [object for object in scene.objects]
+        objs = scene.get_all_objects()
+
+        # O también obtener todos los objetos de la misma con un tipo específico.
+        sensors = list(scene.proximity_sensors)
+        sensors = [sensor for sensor in scene.proximity_sensors]
+        sensors = scene.get_all_objects_of_type(ProximitySensor)
+    '''
+
+
+    def __init__(self, client):
+        '''
+        Inicializa la instancia.
+        :param client:  Es una instancia de la clase Client con el que se ha establecido una conexión a la servidor
+        API remoto de V-rep donde se llevará a cabo esta simulación.
+        '''
+        self.client = client
+
+        self.objects = ObjectsProxy(self.client)
+        self.joints = self.objects.joints
+        self.cameras = self.objects.cameras
+        self.proximity_sensors = self.objects.proximity_sensors
+        self.vision_sensors = self.objects.vision_sensors
+        self.shapes = self.objects.shapes
+
+    def get_object(self, name):
+        '''
+        Devuelve un objeto de la escena cuyo nombre es que se indica como parámetro.
+        :param name:
+        :return: Devuelve el objeto cuyo nombre es el que se indica, o None si el objeto no existe.
+        '''
+        return self.objects.get(name)
+
+    def get_all_objects(self):
+        '''
+        Devuelve todos los objetos de la escena.
+        Es igual que self.objects.get_all()
+        :return:
+        '''
+        return self.objects.get_all()
+
+    def get_all_objects_of_type(self, object_type):
+        '''
+        Devuelve todos los objetos de la escena que son de un tipo en concreto.
+        e.g: get_all_objects_of_type(Joint)
+        Es igual que self.objects.get_all_of_type
+        :param object_type:
+        :return:
+        '''
+        return self.objects.get_all_of_type(object_type)
+
+class ObjectsProxy:
+    '''
+    Clase auxiliar usada por la clase Scene para obtener información de los objetos de la escena V-rep.
+    '''
+    def __init__(self, client):
+        self.client = client
+        self.object_type = {}
+        self.cached_objects = {}
+        self.object_types = [Joint, ProximitySensor, VisionSensor, Camera, Shape]
+        self.bind_object_types = {
+            Joint : binds.sim_object_joint_type,
+            ProximitySensor : binds.sim_object_proximitysensor_type,
+            VisionSensor : binds.sim_object_visionsensor_type,
+            Camera : binds.sim_object_camera_type,
+            Shape : binds.sim_object_shape_type
+        }
+        self.joints = TypedObjectsProxy(self, Joint)
+        self.proximity_sensors = TypedObjectsProxy(self, ProximitySensor)
+        self.vision_sensors = TypedObjectsProxy(self, VisionSensor)
+        self.cameras = TypedObjectsProxy(self, Camera)
+        self.shapes = TypedObjectsProxy(self, Shape)
+
+    def get(self, object_name):
+        '''
+        Consulta un objeto de la escena V-rep cuyo nombre es el que se indica como argumento.
+        :param object_name:
+        :return: Devuelve un objeto cuyo nombre es el que se indica, o None si no existe ningún objeto con ese
+        nombre
+        '''
+        if object_name in self.cached_objects:
+            return self.cached_objects[object_name]
+
+        code, handler = binds.simxGetObjectHandle(self.client.get_id(), object_name, binds.simx_opmode_blocking)
+        if code != 0:
+            return None
+
+        object_type = self._get_type(handler)
+
+        if object_type is None:
+            raise Exception('Object retrieve from V-rep remote API has unrecognized type')
+
+        cls = object_type
+        object = cls(object_name)
+        self.cached_objects[object_name] = object
+
+        return object
+
+
+    def _get_type(self, handler):
+        if handler in self.object_type:
+            return self.object_type[handler]
+        else:
+            object_types = self.object_types
+            for object_type in object_types:
+                objects = self.get_all_of_type(object_type)
+                for object in objects:
+                    self.object_type[object.get_id()] = object_type
+
+                if handler in [object.get_id() for object in objects]:
+                    return object_type
+
+            return None
+
+
+    def get_all_of_type(self, object_type):
+        '''
+        Devuelve todos los objetos de un tipo específico.
+        e.g:
+        .get_all_of_type(object_type = Joint)
+        :param object_type:
+        :return:
+        '''
+        code, handlers = binds.simxGetObjects(self.client.get_id(), self.bind_object_types[object_type], binds.simx_opmode_blocking)
+        if code != 0:
+            raise Exception('Failed to retrieve objects of type {} from V-rep remote api server', object_type.__name__)
+
+        cls = object_type
+        objects = [cls(handler) for handler in handlers]
+        return objects
+
+    def get_all(self):
+        '''
+        Devuelve todos los objetos de la escena V-rep
+        :return:
+        '''
+        return reduce(lambda x,y:x+y, [self.get_all_of_type(object_type) for object_type in self.object_types])
+
+
+
+    def __iter__(self):
+        return iter(self.get_all())
+
+    def __getattr__(self, object_name):
+        object = self.get(object_name)
+        if object is None:
+            raise ObjectNotFoundError(object_name)
+        return object
+
+    def __getitem__(self, object_name):
+        return self.get(object_name)
+
+
+class TypedObjectsProxy:
+    def __init__(self, objects, object_type):
+        self.objects = objects
+        self.object_type = object_type
+
+    def get(self, object_name):
+        object = self.objects.get(object_name)
+        if not object is None and not isinstance(object, self.object_type):
+            raise InvalidObjectTypeError(object, self.object_type)
+        return object
+
+    def get_all(self):
+        return self.objects.get_all_of_type(self.object_type)
+
+
+    def __getitem__(self, object_name):
+        return self.get(object_name)
+
+    def __getattr__(self, object_name):
+        object = self.get(object_name)
+        if object is None:
+            raise ObjectNotFoundError(object_name)
+        return object
+
+    def __iter__(self):
+        return iter(self.get_all())
+
+
+class Object:
+    def __init__(self, id):
+        self.id = id
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def get_id(self):
+        return self.id
+
+class Joint(Object):
+    pass
+
+class ProximitySensor(Object):
+    pass
+
+class VisionSensor(Object):
+    pass
+
+class Camera(Object):
+    pass
+
+class Shape(Object):
+    pass
