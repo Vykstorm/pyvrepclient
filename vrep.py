@@ -4,14 +4,18 @@
 import vrep_binds as binds
 from re import fullmatch
 from functools import reduce
+import numpy as np
+import PIL
+from PIL import Image
 
 
 class _Exception(Exception):
     '''
     Es la clase base para todas las excepciones lanzadas por algún método de este script
     '''
-    def __init__(self, message, *args):
-        super().__init__(message.format(*args))
+    def __init__(self, *args):
+        message = args[0].format(*args[1:]) if len(args) > 0 and isinstance(args[0], str) else (str(args[0]) if len(args) > 0 else 'Unknown exception')
+        super().__init__(message)
 
 Exception = _Exception
 del _Exception
@@ -358,7 +362,7 @@ class ObjectsProxy:
             raise Exception('Object retrieve from V-rep remote API has unrecognized type')
 
         cls = object_type
-        object = cls(object_name)
+        object = cls(client = self.client, id = handler)
         self.cached_objects[object_name] = object
 
         return object
@@ -393,7 +397,7 @@ class ObjectsProxy:
             raise Exception('Failed to retrieve objects of type {} from V-rep remote api server', object_type.__name__)
 
         cls = object_type
-        objects = [cls(handler) for handler in handlers]
+        objects = [cls(client = self.client, id = handler) for handler in handlers]
         return objects
 
     def get_all(self):
@@ -447,7 +451,12 @@ class TypedObjectsProxy:
 
 
 class Object:
-    def __init__(self, id):
+    '''
+    Representa un objeto de la escena. Esta clase no se instancia directamente. Las subclases de esta
+    definen distintos tipos de objetos de la escena V-rep.
+    '''
+    def __init__(self, client, id):
+        self.client = client
         self.id = id
 
     def __str__(self):
@@ -456,17 +465,84 @@ class Object:
     def get_id(self):
         return self.id
 
+
 class Joint(Object):
+    '''
+    Representa un objeto del tipo 'Joint' (motor)
+    '''
     pass
 
 class ProximitySensor(Object):
+    '''
+    Representa un sensor de proximidad
+    '''
     pass
 
 class VisionSensor(Object):
-    pass
+    '''
+    Representa un sensor de visión.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.streamed = False
+
+    def get_image(self, mode = 'RGB', size = None, resample = Image.NEAREST):
+        '''
+        :param mode: Es el modo de la imágen, que puede ser RGB o L (escala de grises)
+        :param size: Es una tupla con la resolución deseada de la imágen. Por defecto es None. Si es None,
+        se devolverá la imágen con la resolución original captada en el simulador. Si se indica y la resolución
+        deseada es distinta a la original, la imágen será redimensionada al tamaño indicado.
+        :param resample: Es el algoritmo de redimensionamiento de la imágen. Por defecto es NEAREST.
+        También puede ser BOX, BILINEAR, BICUBIC, HAMMING y LANCZOS.
+        :return: Devuelve la imágen actual, una instancia de la clase Image de la librería PIL.
+
+        En caso de error se genera una excepción.
+        '''
+        mode = mode.upper()
+        if not mode in ['RGB', 'L']:
+            raise InvalidArgumentValueError('mode', mode)
+
+        if not self.streamed:
+            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_streaming)
+
+            if not code in [0, 1]:
+                raise Exception()
+            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception()
+
+            self.streamed = True
+        else:
+            code, native_size, pixels = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, binds.simx_opmode_streaming)
+            if code != 0:
+                raise Exception()
+
+        native_size = tuple(native_size)
+
+        pixels = np.reshape(np.array(pixels, dtype = np.uint8), native_size + ((3,) if mode == 'RGB' else ()))
+        image = Image.fromarray(pixels, mode = mode)
+
+        if not size is None and native_size != size:
+            image = image.resize(size, resample)
+
+        return image
+
+
+
+
+
 
 class Camera(Object):
+    '''
+    Representa una cámara de la escena (no es lo mismo que un sensor de visión).
+    '''
     pass
 
 class Shape(Object):
+    '''
+    Representa una figura geométrica de la escena (Esferas, cubos, ...)
+    '''
     pass
+
