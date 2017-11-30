@@ -7,6 +7,8 @@ from functools import reduce
 import numpy as np
 import PIL
 from PIL import Image
+import vectormath as vmath
+from vectormath import Vector3
 
 
 class _Exception(Exception):
@@ -518,14 +520,34 @@ class ProximitySensor(Sensor):
     '''
     Representa un sensor de proximidad
     '''
-    pass
+    def get_data(self, opmode):
+        return binds.simxReadProximitySensor(self.client.get_id(), self.get_id(), opmode)
+
+    def get_value(self):
+        '''
+        Devuelve la medición del sensor de proximidad. Se calcula como el inverso de la distancia calculada
+        por el sensor a la superficie detectada por el mismo (en unidades del simulador V-rep, es decir,
+        metros)
+        Casos especiales:
+        - La distancia calculada por el sensor a la superficie detectada es 0. Este método devolvera como resultado,
+        el valor "inf"
+        - El sensor no ha detectado ninguna superficie en su rango de acción. En este caso se devuelve el valor 0.
+        '''
+        detected_state, detected_point, detected_object, detected_surface_normal = self.get_streamed_data()
+        if not detected_state:
+            return 0
+        detected_point = Vector3(detected_point)
+        length = detected_point.length
+        value = 1 / length if length > 0 else float('inf')
+        return value
+
 
 class VisionSensor(Sensor):
     '''
     Representa un sensor de visión.
     '''
 
-    def get_data(self, opmode, mode, *args ,**kwargs):
+    def get_data(self, opmode, mode):
         return binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, opmode)
 
     def get_image(self, mode = 'RGB', size = None, resample = Image.NEAREST):
