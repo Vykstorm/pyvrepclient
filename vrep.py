@@ -289,7 +289,6 @@ class Scene:
 
         self.objects = ObjectsProxy(self.client)
         self.joints = self.objects.joints
-        self.cameras = self.objects.cameras
         self.proximity_sensors = self.objects.proximity_sensors
         self.vision_sensors = self.objects.vision_sensors
         self.shapes = self.objects.shapes
@@ -328,18 +327,16 @@ class ObjectsProxy:
         self.client = client
         self.object_type = {}
         self.cached_objects = {}
-        self.object_types = [Joint, ProximitySensor, VisionSensor, Camera, Shape]
+        self.object_types = [Joint, ProximitySensor, VisionSensor, Shape]
         self.bind_object_types = {
             Joint : binds.sim_object_joint_type,
             ProximitySensor : binds.sim_object_proximitysensor_type,
             VisionSensor : binds.sim_object_visionsensor_type,
-            Camera : binds.sim_object_camera_type,
             Shape : binds.sim_object_shape_type
         }
         self.joints = TypedObjectsProxy(self, Joint)
         self.proximity_sensors = TypedObjectsProxy(self, ProximitySensor)
         self.vision_sensors = TypedObjectsProxy(self, VisionSensor)
-        self.cameras = TypedObjectsProxy(self, Camera)
         self.shapes = TypedObjectsProxy(self, Shape)
 
     def get(self, object_name):
@@ -508,7 +505,6 @@ class VisionSensor(Object):
 
         En caso de error se genera una excepción.
         '''
-        print(self.streamed)
         mode = mode.upper()
         if not mode in ['RGB', 'L']:
             raise InvalidArgumentValueError('mode', mode)
@@ -540,14 +536,6 @@ class VisionSensor(Object):
 
 
 
-
-
-
-class Camera(Object):
-    '''
-    Representa una cámara de la escena (no es lo mismo que un sensor de visión).
-    '''
-    pass
 
 class Shape(Object):
     '''
