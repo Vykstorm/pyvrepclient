@@ -477,7 +477,16 @@ class Joint(Object):
     '''
     Representa un objeto del tipo 'Joint' (motor)
     '''
-    pass
+    def set_velocity(self, amount):
+        '''
+        Establece la velocidad del motor.
+        :param amount: Es la velocidad del motor, en metros/segundo si es del tipo 'prismatic joint',
+        o en radianes/segundo si es del tipo 'prismatic joint'
+        :return:
+        '''
+        code = binds.simxSetJointTargetVelocity(self.client.get_id(), self.get_id(), amount, binds.simx_opmode_oneshot)
+        if not code in [0, 1]:
+            raise Exception('Failed to set velocity to V-rep joint object')
 
 
 class Sensor(Object):
