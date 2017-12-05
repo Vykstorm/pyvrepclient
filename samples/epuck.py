@@ -8,7 +8,7 @@ from time import sleep
 
 from PIL import Image
 
-from collections.epuck import EPuck
+from robots.epuck import EPuck
 from vrep import Client
 
 if __name__ == '__main__':
