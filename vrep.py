@@ -256,8 +256,8 @@ class Scene:
         cam = scene.objects['camera']
         cam = scene.get_object('camera')
 
-        # En el primer caso, si el objeto 'camera' no existe, genera una excepción. En los dos últimos
-        # casos simplemente devolvería None
+        # En el primer  y segundo caso, si el objeto 'camera' no existe, genera una excepción. En el último
+        # caso simplemente devolvería None
 
         # Para asegurarnos que un objeto es de un determinado tipo, podemos consultarlo de la siguiente
         # forma...
@@ -267,14 +267,14 @@ class Scene:
 
         # De esta forma, si 'camera' no es un sensor de visión, se genera una excepción.
         # Puedes usar también: scene.cameras, scene.proximity_sensors, scene.joints y scene.shapes
-        # de la misma forma.
+        # del mismo modo.
 
         # Podemos obtener todos los objetos de la escena
         objs = list(scene.objects)
         objs = [object for object in scene.objects]
         objs = scene.get_all_objects()
 
-        # O también obtener todos los objetos de la misma con un tipo específico.
+        # O también obtener todos los objetos con un tipo específico.
         sensors = list(scene.proximity_sensors)
         sensors = [sensor for sensor in scene.proximity_sensors]
         sensors = scene.get_all_objects_of_type(ProximitySensor)
@@ -295,13 +295,13 @@ class Scene:
         self.vision_sensors = self.objects.vision_sensors
         self.shapes = self.objects.shapes
 
-    def get_object(self, name):
+    def get_object(self, object_name):
         '''
         Devuelve un objeto de la escena cuyo nombre es que se indica como parámetro.
         :param name:
         :return: Devuelve el objeto cuyo nombre es el que se indica, o None si el objeto no existe.
         '''
-        return self.objects.get(name)
+        return self.objects.get(object_name)
 
     def get_all_objects(self):
         '''
@@ -345,8 +345,7 @@ class ObjectsProxy:
         '''
         Consulta un objeto de la escena V-rep cuyo nombre es el que se indica como argumento.
         :param object_name:
-        :return: Devuelve un objeto cuyo nombre es el que se indica, o None si no existe ningún objeto con ese
-        nombre
+        :return: Devuelve un objeto cuyo nombre es el que se indica, o None si no existe ningún objeto con ese nombre
         '''
         if object_name in self.cached_objects:
             return self.cached_objects[object_name]
@@ -415,18 +414,19 @@ class ObjectsProxy:
         return reduce(lambda x,y:x+y, [self.get_all_of_type(object_type) for object_type in self.object_types])
 
 
-
     def __iter__(self):
         return iter(self.get_all())
 
-    def __getattr__(self, object_name):
+
+    def __getitem__(self, object_name):
         object = self.get(object_name)
         if object is None:
             raise ObjectNotFoundError(object_name)
         return object
 
-    def __getitem__(self, object_name):
-        return self.get(object_name)
+    def __getattr__(self, object_name):
+        return self.__getitem__(object_name)
+
 
 
 class TypedObjectsProxy:
@@ -443,15 +443,14 @@ class TypedObjectsProxy:
     def get_all(self):
         return self.objects.get_all_of_type(self.object_type)
 
-
     def __getitem__(self, object_name):
-        return self.get(object_name)
-
-    def __getattr__(self, object_name):
         object = self.get(object_name)
         if object is None:
             raise ObjectNotFoundError(object_name)
         return object
+
+    def __getattr__(self, object_name):
+        return self.__getattr__(object_name)
 
     def __iter__(self):
         return iter(self.get_all())

@@ -51,38 +51,26 @@ class EPuck:
             'right_motor' : right_motor
         }
 
-
         names = dict([(key, value) for key, value in names.items() if not value is None] +\
                      [(key, value) for key, value in default_names.items() if names[key] is None])
 
-
         # Obtenemos los componentes del robot
-        class Proxy(TypedObjectsProxy):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-
-            def __getitem__(self, object_name):
-                return super().__getattr__(object_name)
-
-        joints = Proxy(scene.objects, Joint)
-        proximity_sensors = Proxy(scene.objects, ProximitySensor)
-        vision_sensors = Proxy(scene.objects, VisionSensor)
 
         # Motores izquierdo y derecha
         class Motors:
             def __init__(self):
-                self.left = joints[names.get('left_motor')]
-                self.right = joints[names.get('right_motor')]
+                self.left = scene.joints[names.get('left_motor')]
+                self.right = scene.joints[names.get('right_motor')]
 
         self.motors = Motors()
         self.left_motor = self.motors.left
         self.right_motor = self.motors.right
 
         # Cámara
-        self.camera = vision_sensors[names.get('camera')]
+        self.camera = scene.vision_sensors[names.get('camera')]
 
         # Sensores de luz
-        self.light_sensor = vision_sensors[names.get('light_sensor')]
+        self.light_sensor = scene.vision_sensors[names.get('light_sensor')]
 
         # Sensores de proximidad
-        self.proximity_sensors = [proximity_sensors[name] for name in names.get('proximity_sensors')]
+        self.proximity_sensors = [scene.proximity_sensors[name] for name in names.get('proximity_sensors')]
