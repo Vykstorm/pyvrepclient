@@ -10,7 +10,6 @@ from PIL import Image
 import vectormath as vmath
 from vectormath import Vector3
 
-
 class _Exception(Exception):
     '''
     Es la clase base para todas las excepciones lanzadas por algún método de este script
@@ -63,6 +62,12 @@ class ObjectNotFoundError(Exception):
     def __init__(self, object_name):
         super().__init__('Failed to get object from V-rep scene named "{}"',object_name)
 
+class ObjectsCollectionNotFoundError(Exception):
+    '''
+    Error lanzado al intentar obtener una colección de objetos no existente
+    '''
+    def __init__(self, collection_name):
+        super().__init__('Failed to get object`s collection named "{}"', collection_name)
 
 
 def alive(unchecked_method):
@@ -294,6 +299,8 @@ class Scene:
         self.proximity_sensors = self.objects.proximity_sensors
         self.vision_sensors = self.objects.vision_sensors
         self.shapes = self.objects.shapes
+        from robots import robots
+        self.robots = ObjectsCollectionsProxy(self, robots)
 
     def get_object(self, object_name):
         '''
@@ -302,6 +309,17 @@ class Scene:
         :return: Devuelve el objeto cuyo nombre es el que se indica, o None si el objeto no existe.
         '''
         return self.objects.get(object_name)
+
+
+    def get_robot(self, robot_name):
+        '''
+        Devuelve un robot de la escena V-rep cuyo nombre se indica como parámetro.
+        :param robot_name: Es el nombre del robot
+        :return: Devuelve una instancia de la clase ObjectsCollection (una colección de objetos con los
+        componentes del robot). Devuelve None si no existe ningún robot con ese nombre.
+        '''
+        return self.robots.get(robot_name)
+
 
     def get_all_objects(self):
         '''
@@ -320,6 +338,8 @@ class Scene:
         :return:
         '''
         return self.objects.get_all_of_type(object_type)
+
+
 
 class ObjectsProxy:
     '''
@@ -430,6 +450,11 @@ class ObjectsProxy:
 
 
 class TypedObjectsProxy:
+    '''
+    Es usada por la clase Scene para acceder a los objetos de la escena V-rep. Es igual que la clase
+    ObjectsProxy, pero además realiza una comprobación del tipo de objeto (se asegura que los objetos
+    accedidos son del tipo adecuado)
+    '''
     def __init__(self, objects, object_type):
         self.objects = objects
         self.object_type = object_type
@@ -455,6 +480,30 @@ class TypedObjectsProxy:
     def __iter__(self):
         return iter(self.get_all())
 
+
+class ObjectsCollectionsProxy:
+    '''
+    Clase usada para acceder a colleciones de objetos de la escena V-rep, usada por la clase Scene
+    '''
+    def __init__(self, scene, collection_classes):
+        self.scene = scene
+        self.collection_classes = collection_classes
+
+    def get(self, collection_name):
+        if not collection_name in self.collection_classes:
+            return None
+        cls = self.collection_classes[collection_name]
+        collection = cls(self.scene)
+        return collection
+
+    def __getitem__(self, collection_name):
+        collection = self.get(collection_name)
+        if collection is None:
+            raise ObjectsCollectionNotFoundError(collection_name)
+        return collection
+
+    def __getattr__(self, collection_name):
+        return self.__getitem__(collection_name)
 
 
 
@@ -566,6 +615,7 @@ class Sensor(Object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.streamed = False
+        
 
     def get_data(self, opmode, *args, **kwargs):
         raise NotImplementedError()

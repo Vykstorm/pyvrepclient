@@ -13,7 +13,9 @@ from vrep import Client
 
 if __name__ == '__main__':
     with Client('127.0.0.1:19997') as client:
-        epuck = EPuck(client.scene)
+        scene = client.scene
+
+        epuck = scene.robots.epuck
 
         # Para obtener la cámara y el sensor de luz
         camera = epuck.camera
