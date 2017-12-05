@@ -450,10 +450,80 @@ class TypedObjectsProxy:
         return object
 
     def __getattr__(self, object_name):
-        return self.__getattr__(object_name)
+        return self.__getitem__(object_name)
 
     def __iter__(self):
         return iter(self.get_all())
+
+
+
+
+class ObjectsCollection:
+    '''
+    Se usa para definir colecciones de objetos en la escena V-rep
+    '''
+
+    proximity_sensors = {
+
+    }
+
+    vision_sensors = {
+
+    }
+
+    joints = {
+
+    }
+
+    shapes = {
+
+    }
+
+    class ObjectsProxy(TypedObjectsProxy):
+        def __init__(self, objects, object_type, name_mapping):
+            super().__init__(objects, object_type)
+            self.name_mapping = name_mapping
+
+        def get(self, object_name):
+            if isinstance(self.name_mapping, dict):
+                if not object_name in self.name_mapping:
+                    return None
+                return super().get(self.name_mapping[object_name])
+
+            else:
+                object_index = object_name
+                if object_index >= len(self.name_mapping) or object_index < 0:
+                    return None
+                return super().get(self.name_mapping[object_name])
+
+        def __getitem__(self, object_name):
+            try:
+                return super().__getitem__(object_name)
+            except:
+                if not object_name in self.name_mapping:
+                    if isinstance(self.name_mapping, dict):
+                        raise Exception('No {} named "{}" is part of the collection', self.object_type.__name__, object_name)
+                    else:
+                        object_index = object_name
+                        raise Exception('Trying to get {0} at index {1}. There are only {2} in the collection', self.object_type.__name__, object_index, len(self.name_mapping))
+                else:
+                    raise ObjectNotFoundError(self.name_mapping[object_name])
+
+        def get_all(self):
+            object_names = self.name_mapping.keys() if isinstance(self.name_mapping, dict) else range(0, len(self.name_mapping))
+            return [self[object_name] for object_name in object_names]
+
+        def __len__(self):
+            return len(self.name_mapping)
+
+
+    def __init__(self, scene):
+        self.proximity_sensors = self.ObjectsProxy(scene.objects, ProximitySensor, self.__class__.proximity_sensors)
+        self.vision_sensors = self.ObjectsProxy(scene.objects, VisionSensor, self.__class__.vision_sensors)
+        self.joints = self.ObjectsProxy(scene.objects, Joint, self.__class__.joints)
+        self.shapes = self.ObjectsProxy(scene.objects, Shape, self.__class__.shapes)
+
+
 
 
 class Object:
@@ -596,3 +666,12 @@ class Shape(Object):
     Representa una figura geométrica de la escena (Esferas, cubos, ...)
     '''
     pass
+
+
+
+
+
+
+
+
+

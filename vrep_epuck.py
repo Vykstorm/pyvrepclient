@@ -1,76 +1,65 @@
 
-from vrep import InvalidArgumentValueError, TypedObjectsProxy
-from vrep import Joint, ProximitySensor, VisionSensor
+from vrep import ObjectsCollection
+from types import SimpleNamespace as Namespace
 
-class EPuck:
+class EPuck(ObjectsCollection):
     '''
     Clase de utilidad para trabajar con el robot ePuck en una simulación V-rep
     '''
 
-    def __init__(self, scene, proximity_sensors = None, camera = None, light_sensor = None,
-                 left_motor = None, right_motor = None):
-        '''
-        Inicializa la instancia.
-        Pueden especificarse como parámetro los nombres de los componentes del robot e-Puck
-        Si no se especifican, se buscarán por sus nombres que tienen por defecto al añadir e-Puck al
-        simulador V-rep
-        :param scene: Es la escena V-Rep
-        :param proximity_sensors: Debe ser una lista con los nombres de los sensores de proximidad del e-Puck
-        (en total deben ser ocho)
-        El primer elemento será el primer sensor, el segundo el siguiente en la lista e.t.c, ...
-        :param camera: Debe ser el nombre del sensor de visión del ePuck
-        :param light_sensor: Debe ser el nombre del sensor de luz del ePuck (es otro sensor de visión)
-        :param left_motor: Debe ser el nombre del motor izquierdo del ePuck
-        :param right_motor: Debe ser el nombre del motor derecho del ePuck
-        '''
-        default_names = {
-            'proximity_sensors' : [
-                'ePuck_proxSensor1',
-                'ePuck_proxSensor2',
-                'ePuck_proxSensor3',
-                'ePuck_proxSensor4',
-                'ePuck_proxSensor5',
-                'ePuck_proxSensor6',
-                'ePuck_proxSensor7',
-                'ePuck_proxSensor8'
-            ],
-            'camera' : 'ePuck_camera',
-            'light_sensor' : 'ePuck_lightSensor',
-            'left_motor' : 'ePuck_leftJoint',
-            'right_motor' : 'ePuck_rightJoint'
-        }
+    # Definición de los componentes del robot E-Puck
 
-        if not proximity_sensors is None and len(proximity_sensors) != 8:
-            raise InvalidArgumentValueError('proximity_sensors', proximity_sensors)
+    # Sensores de proximidad
+    proximity_sensors = [
+        'ePuck_proxSensor1',
+        'ePuck_proxSensor2',
+        'ePuck_proxSensor3',
+        'ePuck_proxSensor4',
+        'ePuck_proxSensor5',
+        'ePuck_proxSensor6',
+        'ePuck_proxSensor7',
+        'ePuck_proxSensor8'
+    ]
 
-        names = {
-            'proximity_sensors' : proximity_sensors,
-            'camera' : camera,
-            'light_sensor' : light_sensor,
-            'left_motor' : left_motor,
-            'right_motor' : right_motor
-        }
+    # Sensores de visión
+    vision_sensors = {
+        'camera' : 'ePuck_camera',
+        'light_sensor' : 'ePuck_lightSensor'
+    }
 
-        names = dict([(key, value) for key, value in names.items() if not value is None] +\
-                     [(key, value) for key, value in default_names.items() if names[key] is None])
+    # Motores
+    joints = {
+        'left_motor' : 'ePuck_leftJoint',
+        'right_motor' : 'ePuck_rightJoint'
+    }
 
-        # Obtenemos los componentes del robot
 
-        # Motores izquierdo y derecha
-        class Motors:
-            def __init__(self):
-                self.left = scene.joints[names.get('left_motor')]
-                self.right = scene.joints[names.get('right_motor')]
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        self.motors = Motors()
+        # Definimos algunos alias para acceder a los componentes del robot.
+        self.camera = self.vision_sensors.camera
+        self.light_sensor = self.vision_sensors.light_sensor
+
+        self.prox_sensors15 = Namespace(left = self.proximity_sensors[2],
+                                        right = self.proximity_sensors[3])
+        self.prox_sensors45 = Namespace(left = self.proximity_sensors[1],
+                                        right = self.proximity_sensors[4])
+        self.prox_sensors90 = Namespace(left = self.proximity_sensors[0],
+                                        right = self.proximity_sensors[5])
+        self.prox_sensors135 = Namespace(left = self.proximity_sensors[7],
+                                         right = self.proximity_sensors[6])
+
+        self.prox_sensor15 = self.proximity_sensors[3]
+        self.prox_sensor45 = self.proximity_sensors[4]
+        self.prox_sensor90 = self.proximity_sensors[5]
+        self.prox_sensor135 = self.proximity_sensors[6]
+        self.prox_sensor225 = self.proximity_sensors[7]
+        self.prox_sensor270 = self.proximity_sensors[0]
+        self.prox_sensor315 = self.proximity_sensors[1]
+        self.prox_sensor345 = self.proximity_sensors[2]
+
+        self.motors = Namespace(left = self.joints.left_motor,
+                                right = self.joints.right_motor)
         self.left_motor = self.motors.left
         self.right_motor = self.motors.right
-
-        # Cámara
-        self.camera = scene.vision_sensors[names.get('camera')]
-
-        # Sensores de luz
-        self.light_sensor = scene.vision_sensors[names.get('light_sensor')]
-
-        # Sensores de proximidad
-        self.proximity_sensors = [scene.proximity_sensors[name] for name in names.get('proximity_sensors')]
