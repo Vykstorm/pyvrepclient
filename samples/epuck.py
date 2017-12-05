@@ -60,6 +60,9 @@ if __name__ == '__main__':
         print('Engines stopped')
 
         # Finalmente obtenemos y mostramos la imágen actual de la cámara
+
+        print('Getting image from camera...')
+
         image = camera.get_image(mode = 'RGB', size = (256, 256))
         image.transpose(Image.FLIP_TOP_BOTTOM).show()
 
