@@ -4,10 +4,12 @@
 Ejemplo que demuestra como utilizar la clase EPuck que se provee para trabajar con robots ePuck en V-rep
 '''
 
-from vrep import Client
-from vrep_epuck import EPuck
 from time import sleep
+
 from PIL import Image
+
+from collections.epuck import EPuck
+from vrep import Client
 
 if __name__ == '__main__':
     with Client('127.0.0.1:19997') as client:
