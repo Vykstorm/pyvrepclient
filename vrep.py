@@ -488,12 +488,17 @@ class ObjectsCollectionsProxy:
     def __init__(self, scene, collection_classes):
         self.scene = scene
         self.collection_classes = collection_classes
+        self.cached = {}
 
     def get(self, collection_name):
         if not collection_name in self.collection_classes:
             return None
+        if collection_name in self.cached:
+            return self.cached[collection_name]
+
         cls = self.collection_classes[collection_name]
         collection = cls(self.scene)
+        self.cached[collection_name] = collection
         return collection
 
     def __getitem__(self, collection_name):
@@ -611,32 +616,33 @@ class Sensor(Object):
     '''
     Representa un sensor. Puede ser un sensor de proximidad o un sensor de visión.
     '''
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.streamed = False
-        
+        self.stream_params = None
 
-    def get_data(self, opmode, *args, **kwargs):
+    def get_data(self, opmode, *args):
         raise NotImplementedError()
 
-    def get_streamed_data(self, *args, **kwargs):
+    def get_streamed_data(self, *args):
         try:
-            if not self.streamed:
-                values = self.get_data(binds.simx_opmode_blocking, *args, **kwargs)
+            if not self.streamed or args != self.stream_params:
+                values = self.get_data(binds.simx_opmode_blocking, *args)
                 code = values[0]
                 if code != 0:
                     raise Exception()
                 _values = values
 
-                values = self.get_data(binds.simx_opmode_streaming, *args, **kwargs)
+                values = self.get_data(binds.simx_opmode_streaming, *args)
                 code = values[0]
                 if not code in [0, 1]:
                     raise Exception()
+
                 self.streamed = True
+                self.stream_params = args
                 values = _values
             else:
-                values = self.get_data(binds.simx_opmode_buffer, *args, **kwargs)
+                values = self.get_data(binds.simx_opmode_buffer, *args)
                 code = values[0]
                 if not code in [0, 1]:
                     raise Exception()
@@ -648,6 +654,12 @@ class ProximitySensor(Sensor):
     '''
     Representa un sensor de proximidad
     '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+
     def get_data(self, opmode):
         return binds.simxReadProximitySensor(self.client.get_id(), self.get_id(), opmode)
 
