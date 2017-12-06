@@ -2,72 +2,16 @@
 
 
 import vrep_binds as binds
+from vrep_errors import *
+
 from re import fullmatch
 from functools import reduce
 import numpy as np
-import PIL
 from PIL import Image
-import vectormath as vmath
 from vectormath import Vector3
 
-class _Exception(Exception):
-    '''
-    Es la clase base para todas las excepciones lanzadas por algún método de este script
-    '''
-    def __init__(self, *args):
-        message = args[0].format(*args[1:]) if len(args) > 0 and isinstance(args[0], str) else (str(args[0]) if len(args) > 0 else 'Unknown exception')
-        super().__init__(message)
-
-Exception = _Exception
-del _Exception
 
 
-class ConnectionError(Exception):
-    '''
-    Error generado cuando hay un error de conexión con la API remota V-rep
-    '''
-    def __init__(self, address):
-        super().__init__('Failed to connect to V-rep remote API server at {}', address)
-
-
-class ConnectionAlreadyClosedError(Exception):
-    '''
-    Error generado cuando se intenta usar el cliente después de haber cerrado la conexión con la API remota V-rep
-    '''
-    def __init__(self):
-        super().__init__('Connection to V-rep remote API server already closed')
-
-
-class InvalidArgumentValueError(Exception):
-    '''
-    Error generado cuando a uno de los métodos de este módulo se le pasa un argumento con un formato o valor incorrecto
-    '''
-    def __init__(self, arg, value):
-        super().__init__('Invalid value argument specified for {} parameter. Got value "{}"', arg, value)
-
-
-class InvalidObjectTypeError(Exception):
-    '''
-    Error generado al intentar obtener un objeto de la escena V-rep de un tipo específico cuando el objeto
-    no es del tipo deseado
-    '''
-    def __init__(self, object, expected_type):
-        super().__init__('Invalid object type. Expected "{}" object but got "{}"', object, expected_type.__name__)
-
-
-class ObjectNotFoundError(Exception):
-    '''
-    Error lanzado al intentar obtener un objeto de la escena V-rep por nombre y este no exista.
-    '''
-    def __init__(self, object_name):
-        super().__init__('Failed to get object from V-rep scene named "{}"',object_name)
-
-class ObjectsCollectionNotFoundError(Exception):
-    '''
-    Error lanzado al intentar obtener una colección de objetos no existente
-    '''
-    def __init__(self, collection_name):
-        super().__init__('Failed to get object`s collection named "{}"', collection_name)
 
 
 def alive(unchecked_method):
@@ -213,20 +157,22 @@ class Simulation:
         '''
         Resume la simulación.
         '''
-        code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code != 0:
-            raise Exception('Failed to resume V-rep simulation')
+        if not self.running:
+            code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception('Failed to resume V-rep simulation')
 
-        self.running = True
+            self.running = True
 
     def pause(self):
         '''
         La ejecución de la simulación queda pausada.
         :return:
         '''
-        code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code != 0:
-            raise Exception('Failed to pause V-rep simulation')
+        if self.running:
+            code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception('Failed to pause V-rep simulation')
 
 
     def stop(self):
@@ -235,11 +181,12 @@ class Simulation:
         resume()
         :return:
         '''
-        code = binds.simxStopSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code != 0:
-            raise Exception('Failed to stop V-rep simulation')
+        if self.running:
+            code = binds.simxStopSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception('Failed to stop V-rep simulation')
 
-        self.running = False
+            self.running = False
 
     def is_running(self):
         '''
@@ -523,6 +470,197 @@ class ObjectsCollectionsProxy:
 
 
 
+
+
+
+
+class Object:
+    '''
+    Representa un objeto de la escena. Esta clase no se instancia directamente. Las subclases de esta
+    definen distintos tipos de objetos de la escena V-rep.
+    '''
+    def __init__(self, client, id):
+        self.client = client
+        self.id = id
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def get_id(self):
+        return self.id
+
+
+class Joint(Object):
+    '''
+    Representa un objeto del tipo 'Joint' (motor)
+    '''
+    def set_velocity(self, amount):
+        '''
+        Establece la velocidad del motor.
+        :param amount: Es la velocidad del motor, en metros/segundo si es del tipo 'prismatic joint',
+        o en radianes/segundo si es del tipo 'prismatic joint'
+        :return:
+        '''
+        code = binds.simxSetJointTargetVelocity(self.client.get_id(), self.get_id(), amount, binds.simx_opmode_oneshot)
+        if not code in [0, 1]:
+            raise Exception('Failed to set velocity to V-rep joint object')
+
+
+
+class Sensor(Object):
+    '''
+    Representa un sensor. Puede ser un sensor de proximidad o un sensor de visión.
+    La escena debe estar activa (debe haberse invocado scene.simulation.resume()) antes de muestrar
+    un sensor.
+    '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.streamed = False
+
+
+    def start_streaming(self):
+        '''
+        Este método inicializa el sensor y crea un stream de datos entre cliente y servidor
+        para actualizar la medición del sensor cada cierto tiempo. Después de invocar este método,
+        el valor de muestra del sensor se obtiene de un buffer en el cliente (normalmente es un valor
+        de medición anterior), es decir, no envía una petición al servidor para obtener la medición.
+        Debe ser implementado por las subclases y deben asignar la variable streamed a True
+        '''
+        self.streamed = True
+
+    def _get_data(self, streamed):
+        '''
+        Este método debe devolver el valor de medición actual del sensor.
+        Debe ser implementado por las subclases.
+        :param streamed: Si streamed es True, debe devolver la medición actual almacenada en el buffer del cliente.
+        En caso contrario, debe hacer un petición al simulador V-rep para obtener el valor del sensor
+        :return:
+        '''
+        raise NotImplementedError()
+
+    def get_value(self):
+        ''''
+        Este método devuelve la medición actual del sensor.
+        '''
+        if not self.streamed:
+            data = self._get_data(streamed = False)
+            self.start_streaming()
+        else:
+            data = self._get_data(streamed = True)
+
+        return data
+
+
+class ProximitySensor(Sensor):
+    '''
+    Representa un sensor de proximidad
+
+    Se determina el valor del sensor como el inverso de la distancia calculada
+    a la superficie detectada por el mismo (en unidades del simulador V-rep, es decir, metros)
+    Casos especiales:
+    - Si la distancia calculada por el sensor a la superficie detectada es 0 ls medición del sensor
+    será "inf"
+    - El sensor no ha detectado ninguna superficie en su rango de acción. En este caso se devuelve el valor 0.
+
+    '''
+
+    def start_streaming(self):
+        super().start_streaming()
+
+        try:
+            values = binds.simxReadProximitySensor(self.client.get_id(), self.get_id(), binds.simx_opmode_streaming)
+            code = values[0]
+            if not code in [0, 1]:
+                raise Exception()
+        except:
+            raise Exception('Error initializing proximity sensor data stream on V-rep remote API server')
+
+    def _get_data(self, streamed):
+        opmode = binds.simx_opmode_blocking if not streamed else binds.simx_opmode_buffer
+        values = binds.simxReadProximitySensor(self.client.get_id(), self.get_id(), opmode)
+        code = values[0]
+
+        if not code in [0, 1]:
+            raise Exception('Error getting proxmity sensor data from client buffer')
+
+        detected_state, detected_point, detected_object, detected_surface_normal = values[1:]
+        if not detected_state:
+            return 0
+        detected_point = Vector3(detected_point)
+        length = detected_point.length
+        value = 1 / length if length > 0 else float('inf')
+        return value
+
+
+class VisionSensor(Sensor):
+    '''
+    Representa un sensor de visión.
+    '''
+
+    def start_streaming(self):
+        super().start_streaming()
+
+        try:
+            values = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0, binds.simx_opmode_streaming)
+            code = values[0]
+            if not code in [0, 1]:
+                raise Exception()
+        except:
+            raise Exception('Error initializing vision sensor data stream on V-rep remote API server')
+
+
+    def _get_data(self, streamed):
+        opmode = binds.simx_opmode_blocking if not streamed else binds.simx_opmode_buffer
+
+        values = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0, opmode)
+        code = values[0]
+        if not code in [0, 1]:
+            raise Exception('Error getting vision sensor data from client buffer')
+        native_size, pixels = values[1:]
+        native_size = tuple(native_size)
+        pixels = np.reshape(np.array(pixels, dtype=np.uint8), (native_size + (3,)))
+
+        return pixels
+
+
+    def get_image(self, mode = 'RGB', size = None, resample = Image.NEAREST):
+        '''
+        Interpreta la medición del sensor como una imágen.
+        :param mode: Es el modo de la imágen (RGB, 1, L, P, ...). Son modos de imágen definidos por la librería Pillow
+        :param size: Es una tupla con la resolución deseada de la imágen. Por defecto es None. Si es None,
+        se devolverá la imágen con la resolución original captada en el simulador. Si se indica y la resolución
+        deseada es distinta a la original, la imágen será redimensionada al tamaño indicado.
+        :param resample: Es el algoritmo de redimensionamiento de la imágen. Por defecto es NEAREST.
+        También puede ser BOX, BILINEAR, BICUBIC, HAMMING y LANCZOS.
+        :return: Devuelve la imágen actual, una instancia de la clase Image de la librería Pillow.
+        En caso de error se genera una excepción.
+        '''
+        pixels = self.get_value()
+        try:
+            native_size = pixels.shape[0:2]
+            image = Image.fromarray(pixels, mode='RGB')
+
+            if mode != 'RGB':
+                image = image.convert(mode = mode)
+
+            if not size is None and native_size != size:
+                image = image.resize(size, resample)
+
+            return image
+        except:
+            raise Exception('Error getting image from vision sensor pixels data')
+
+
+
+class Shape(Object):
+    '''
+    Representa una figura geométrica de la escena (Esferas, cubos, ...)
+    '''
+    pass
+
+
+
+
 class ObjectsCollection:
     '''
     Se usa para definir colecciones de objetos en la escena V-rep
@@ -587,162 +725,6 @@ class ObjectsCollection:
         self.vision_sensors = self.ObjectsProxy(scene.objects, VisionSensor, self.__class__.vision_sensors)
         self.joints = self.ObjectsProxy(scene.objects, Joint, self.__class__.joints)
         self.shapes = self.ObjectsProxy(scene.objects, Shape, self.__class__.shapes)
-
-
-
-
-class Object:
-    '''
-    Representa un objeto de la escena. Esta clase no se instancia directamente. Las subclases de esta
-    definen distintos tipos de objetos de la escena V-rep.
-    '''
-    def __init__(self, client, id):
-        self.client = client
-        self.id = id
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def get_id(self):
-        return self.id
-
-
-class Joint(Object):
-    '''
-    Representa un objeto del tipo 'Joint' (motor)
-    '''
-    def set_velocity(self, amount):
-        '''
-        Establece la velocidad del motor.
-        :param amount: Es la velocidad del motor, en metros/segundo si es del tipo 'prismatic joint',
-        o en radianes/segundo si es del tipo 'prismatic joint'
-        :return:
-        '''
-        code = binds.simxSetJointTargetVelocity(self.client.get_id(), self.get_id(), amount, binds.simx_opmode_oneshot)
-        if not code in [0, 1]:
-            raise Exception('Failed to set velocity to V-rep joint object')
-
-
-class Sensor(Object):
-    '''
-    Representa un sensor. Puede ser un sensor de proximidad o un sensor de visión.
-    La escena debe estar activa (debe haberse invocado scene.simulation.resume()) antes de muestrar
-    un sensor.
-    '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.streamed = False
-        self.stream_params = None
-
-    def get_data(self, opmode, *args):
-        raise NotImplementedError()
-
-    def get_streamed_data(self, *args):
-        try:
-            if not self.streamed or args != self.stream_params:
-                values = self.get_data(binds.simx_opmode_blocking, *args)
-                code = values[0]
-                if code != 0:
-                    raise Exception()
-                _values = values
-
-                values = self.get_data(binds.simx_opmode_streaming, *args)
-                code = values[0]
-                if not code in [0, 1]:
-                    raise Exception()
-
-                self.streamed = True
-                self.stream_params = args
-                values = _values
-            else:
-                values = self.get_data(binds.simx_opmode_buffer, *args)
-                code = values[0]
-                if not code in [0, 1]:
-                    raise Exception()
-            return values[1:]
-        except:
-            raise Exception('Error getting streamed data from V-rep remote API server')
-
-class ProximitySensor(Sensor):
-    '''
-    Representa un sensor de proximidad
-    '''
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
-
-    def get_data(self, opmode):
-        return binds.simxReadProximitySensor(self.client.get_id(), self.get_id(), opmode)
-
-    def get_value(self):
-        '''
-        Devuelve la medición del sensor de proximidad. Se calcula como el inverso de la distancia calculada
-        por el sensor a la superficie detectada por el mismo (en unidades del simulador V-rep, es decir,
-        metros)
-        Casos especiales:
-        - La distancia calculada por el sensor a la superficie detectada es 0. Este método devolvera como resultado,
-        el valor "inf"
-        - El sensor no ha detectado ninguna superficie en su rango de acción. En este caso se devuelve el valor 0.
-        '''
-        detected_state, detected_point, detected_object, detected_surface_normal = self.get_streamed_data()
-        if not detected_state:
-            return 0
-        detected_point = Vector3(detected_point)
-        length = detected_point.length
-        value = 1 / length if length > 0 else float('inf')
-        return value
-
-
-class VisionSensor(Sensor):
-    '''
-    Representa un sensor de visión.
-    '''
-
-    def get_data(self, opmode, mode):
-        return binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0 if mode == 'RGB' else 1, opmode)
-
-    def get_image(self, mode = 'RGB', size = None, resample = Image.NEAREST):
-        '''
-        :param mode: Es el modo de la imágen, que puede ser RGB o L (escala de grises)
-        :param size: Es una tupla con la resolución deseada de la imágen. Por defecto es None. Si es None,
-        se devolverá la imágen con la resolución original captada en el simulador. Si se indica y la resolución
-        deseada es distinta a la original, la imágen será redimensionada al tamaño indicado.
-        :param resample: Es el algoritmo de redimensionamiento de la imágen. Por defecto es NEAREST.
-        También puede ser BOX, BILINEAR, BICUBIC, HAMMING y LANCZOS.
-        :return: Devuelve la imágen actual, una instancia de la clase Image de la librería PIL.
-
-        En caso de error se genera una excepción.
-        '''
-        mode = mode.upper()
-        if not mode in ['RGB', 'L']:
-            raise InvalidArgumentValueError('mode', mode)
-
-        native_size, pixels = self.get_streamed_data(mode)
-
-        try:
-            native_size = tuple(native_size)
-            pixels = np.reshape(np.array(pixels, dtype = np.uint8), native_size + ((3,) if mode == 'RGB' else ()))
-            image = Image.fromarray(pixels, mode = mode)
-
-            if not size is None and native_size != size:
-                image = image.resize(size, resample)
-        except:
-            raise Exception('Error getting current image from vision sensor from V-rep remote API server')
-
-        return image
-
-
-
-
-class Shape(Object):
-    '''
-    Representa una figura geométrica de la escena (Esferas, cubos, ...)
-    '''
-    pass
-
-
 
 
 
