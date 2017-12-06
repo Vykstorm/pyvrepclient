@@ -541,7 +541,13 @@ class Sensor(Object):
     def get_value(self):
         ''''
         Este método devuelve la medición actual del sensor.
+        La simulación debe estar ejecutandose para obtener valores de los sensores.
         '''
+        simulation = self.client.simulation
+
+        if not simulation.is_running():
+            raise Exception('Error getting sensor data: V-rep simulation is not running')
+
         if not self.streamed:
             data = self._get_data(streamed = False)
             self.start_streaming()
