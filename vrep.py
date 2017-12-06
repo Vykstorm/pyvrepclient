@@ -714,7 +714,10 @@ class ObjectsCollection:
                         raise Exception('No {} named "{}" is part of the collection', self.object_type.__name__, object_name)
                     else:
                         object_index = object_name
-                        raise Exception('Trying to get {0} at index {1}. There are only {2} in the collection', self.object_type.__name__, object_index, len(self.name_mapping))
+                        if object_index >= len(self.name_mapping) or object_index < 0:
+                            raise Exception('Trying to get {0} at index {1}. There are only {2} in the collection', self.object_type.__name__, object_index, len(self.name_mapping))
+                        else:
+                            raise ObjectNotFoundError(self.name_mapping[object_name])
                 else:
                     raise ObjectNotFoundError(self.name_mapping[object_name])
 
