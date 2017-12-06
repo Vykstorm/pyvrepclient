@@ -18,18 +18,19 @@ if __name__ == '__main__':
         # Comenzamos la simulación
         simulation.resume()
 
-        # Para obtener una referencia al sensor (cuyo nombre en el simulador es "ePuck_proxSensor1")
-        proximity_sensor = scene.proximity_sensors.ePuck_proxSensor1
-        #proximity_sensor = scene.proximity_sensors['ePuck_proxSensor1']
-        #proximity_sensor =  scene.proximity_sensors.get('ePuck_proxSensor1')
+        try:
+            # Para obtener una referencia al sensor (cuyo nombre en el simulador es "ePuck_proxSensor1")
+
+            proximity_sensor = scene.proximity_sensors.ePuck_proxSensor1
+            #proximity_sensor = scene.proximity_sensors['ePuck_proxSensor1']
+            #proximity_sensor =  scene.proximity_sensors.get('ePuck_proxSensor1')
 
 
-        # Mostramos 30 mediciones del sensor, 1 por segundo.
-        for i in range(0, 30):
-            value = proximity_sensor.get_value()
-            print('Sensor value: {}'.format(value))
-            sleep(1)
-
-
-        # Paramos la simulación
-        simulation.stop()
+            # Mostramos 30 mediciones del sensor, 1 por segundo.
+            for i in range(0, 30):
+                value = proximity_sensor.get_value()
+                print('Sensor value: {}'.format(value))
+                sleep(1)
+        finally:
+            # Paramos la simulación
+            simulation.stop()

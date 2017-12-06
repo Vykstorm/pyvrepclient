@@ -33,44 +33,45 @@ if __name__ == '__main__':
         simulation = client.simulation
         simulation.resume()
 
-        print('Starting simulation')
+        try:
+            print('Starting simulation')
 
 
-        # Mostramos mediciones de los sensores (La primera medición suele ser lenta,
-        # porque se lleva acabo de forma sincrona con el servidor remoto V-REP)
-        for i in range(0, len(proximity_sensors)):
-            sensor = proximity_sensors[i]
-            print('Sensor {} value: {}'.format(i+1, sensor.get_value()))
+            # Mostramos mediciones de los sensores (La primera medición suele ser lenta,
+            # porque se lleva acabo de forma sincrona con el servidor remoto V-REP)
+            for i in range(0, len(proximity_sensors)):
+                sensor = proximity_sensors[i]
+                print('Sensor {} value: {}'.format(i+1, sensor.get_value()))
 
-        sleep(2)
+            sleep(2)
 
-        # Movemos los motores
+            # Movemos los motores
 
-        print('Moving engines')
+            print('Moving engines')
 
-        left_motor.set_velocity(10)
-        right_motor.set_velocity(5)
-        sleep(3)
+            left_motor.set_velocity(10)
+            right_motor.set_velocity(5)
+            sleep(3)
 
-        right_motor.set_velocity(10)
-        sleep(4)
+            right_motor.set_velocity(10)
+            sleep(4)
 
-        left_motor.set_velocity(5)
-        sleep(3)
+            left_motor.set_velocity(5)
+            sleep(3)
 
-        left_motor.set_velocity(0)
-        right_motor.set_velocity(0)
+            left_motor.set_velocity(0)
+            right_motor.set_velocity(0)
 
-        print('Engines stopped')
+            print('Engines stopped')
 
-        # Finalmente obtenemos y mostramos la imágen actual de la cámara
+            # Finalmente obtenemos y mostramos la imágen actual de la cámara
 
-        print('Getting image from camera...')
+            print('Getting image from camera...')
 
-        image = camera.get_image(mode = 'RGB', size = (256, 256))
-        image.transpose(Image.FLIP_TOP_BOTTOM).show()
+            image = camera.get_image(mode = 'RGB', size = (256, 256))
+            image.transpose(Image.FLIP_TOP_BOTTOM).show()
+        finally:
+            # Paramos la simulación
+            simulation.stop()
 
-        # Paramos la simulación
-        simulation.stop()
-
-        print('Simulation finish')
+            print('Simulation finish')

@@ -18,20 +18,24 @@ if __name__ == '__main__':
         # Comenzamos la simulación
         simulation.resume()
 
-        # Para obtener una referencia al motor izquierdo y derecho ("ePuck_leftJoint" y "ePuck_rightJoint")
-        left_motor = scene.joints.ePuck_leftJoint
-        #left_motor = scene.joints['ePuck_leftJoint']
-        #left_motor =  scene.joints.get('ePuck_leftJoint')
+        try:
 
-        right_motor = scene.joints.ePuck_rightJoint
+            # Para obtener una referencia al motor izquierdo y derecho ("ePuck_leftJoint" y "ePuck_rightJoint")
+
+            left_motor = scene.joints.ePuck_leftJoint
+            #left_motor = scene.joints['ePuck_leftJoint']
+            #left_motor =  scene.joints.get('ePuck_leftJoint')
+
+            right_motor = scene.joints.ePuck_rightJoint
 
 
-        # Modificamos la velocidad de los motores
-        left_motor.set_velocity(6.28 / 2)
-        right_motor.set_velocity(6.28 / 2)
+            # Modificamos la velocidad de los motores
+            left_motor.set_velocity(6.28 / 2)
+            right_motor.set_velocity(6.28 / 2)
 
-        # Dejamos la simulación durante 10 segundos
-        sleep(20)
+            # Dejamos la simulación durante 10 segundos
+            sleep(20)
 
-        # Paramos la simulación
-        simulation.stop()
+        finally:
+            # Paramos la simulación
+            simulation.stop()
