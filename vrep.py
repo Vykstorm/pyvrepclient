@@ -72,7 +72,7 @@ class ObjectsCollectionNotFoundError(Exception):
 
 def alive(unchecked_method):
     '''
-    Decorador auxiliar para los métodos de esta clase. Sirve para añadir código de comprobación a los inicios de estas
+    Decorador auxiliar para los métodos de la clase Client. Sirve para añadir código de comprobación al inicio de estas
     funciones para lanzar una excepción en caso de que se haya cerrado la conexión con la API remota.
     '''
     def checked_method(self, *args, **kwargs):
@@ -207,6 +207,7 @@ class Simulation:
         API remoto de V-rep donde se llevará a cabo esta simulación.
         '''
         self.client = client
+        self.running = False
 
     def resume(self):
         '''
@@ -215,6 +216,8 @@ class Simulation:
         code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
         if code != 0:
             raise Exception('Failed to resume V-rep simulation')
+
+        self.running = True
 
     def pause(self):
         '''
@@ -236,6 +239,14 @@ class Simulation:
         if code != 0:
             raise Exception('Failed to stop V-rep simulation')
 
+        self.running = False
+
+    def is_running(self):
+        '''
+        Comprueba si la simulación esta activa. Será True después de haber invocado resume() y False después
+        de la ejecución del método stop()
+        '''
+        return self.running
 
     def __enter__(self):
         self.resume()
@@ -615,6 +626,8 @@ class Joint(Object):
 class Sensor(Object):
     '''
     Representa un sensor. Puede ser un sensor de proximidad o un sensor de visión.
+    La escena debe estar activa (debe haberse invocado scene.simulation.resume()) antes de muestrar
+    un sensor.
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
