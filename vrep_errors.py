@@ -21,8 +21,8 @@ class ConnectionError(Exception):
     '''
     Error generado cuando hay un error de conexión con la API remota V-rep
     '''
-    def __init__(self, address):
-        super().__init__('Failed to connect to V-rep remote API server at {}', address)
+    def __init__(self, ip, port):
+        super().__init__('Failed to connect to V-rep remote API server at {}:{}', ip, port)
 
 
 class ConnectionAlreadyClosedError(Exception):

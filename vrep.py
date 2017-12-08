@@ -68,7 +68,7 @@ class Client:
         self.id = binds.simxStart(ip, port, True, True, 5000, comm_thread_cycle)
 
         if self.id == -1:
-            raise ConnectionError(address)
+            raise ConnectionError(ip, port)
 
         self.simulation = Simulation(self)
         self.scene = Scene(self)
@@ -297,6 +297,14 @@ class Scene:
         '''
         return self.objects.get_all_of_type(object_type)
 
+    def object_exists(self, object_name):
+        '''
+        Comprueba si un objeto con el nombre indicado como parámetro existe o no.
+        :param object_name: Es el nombre del objeto.
+        :return:
+        '''
+        return self.object.has(object_name)
+
 
 
 class ObjectsProxy:
@@ -343,6 +351,13 @@ class ObjectsProxy:
 
         return object
 
+    def has(self, object_name):
+        '''
+        Comprueba si un objeto cuyo nombre se especifica como parámetro, existe en la escena V-rep
+        :param object_name:
+        :return:
+        '''
+        return not self.get(object_name) is None
 
     def _get_type(self, handler):
         if handler in self.object_type:
@@ -405,6 +420,8 @@ class ObjectsProxy:
     def __getattr__(self, object_name):
         return self.__getitem__(object_name)
 
+    def __contains__(self, object_name):
+        return self.has(object_name)
 
 
 class TypedObjectsProxy:
@@ -423,6 +440,10 @@ class TypedObjectsProxy:
             raise InvalidObjectTypeError(object, self.object_type)
         return object
 
+    def has(self, object_name):
+        object = self.objects.get(object_name)
+        return object is None and isinstance(object, self.object_type)
+
     def get_all(self):
         return self.objects.get_all_of_type(self.object_type)
 
@@ -437,6 +458,9 @@ class TypedObjectsProxy:
 
     def __iter__(self):
         return iter(self.get_all())
+
+    def __contains__(self, object_name):
+        return self.has(object_name)
 
 
 class ObjectsCollectionsProxy:
@@ -734,10 +758,3 @@ class ObjectsCollection:
         self.vision_sensors = self.ObjectsProxy(scene.objects, VisionSensor, self.__class__.vision_sensors)
         self.joints = self.ObjectsProxy(scene.objects, Joint, self.__class__.joints)
         self.shapes = self.ObjectsProxy(scene.objects, Shape, self.__class__.shapes)
-
-
-
-
-
-
-
