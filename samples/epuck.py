@@ -74,8 +74,9 @@ if __name__ == '__main__':
             image = camera.get_image(mode = 'RGB', size = (256, 256))
             image.transpose(Image.FLIP_TOP_BOTTOM).show()
 
+
         except Exception as e:
-            print('An error occurred: {}'.format(e))
+            print('Something went wrong: {}'.format(e))
         finally:
             # Paramos la simulación
             simulation.stop()

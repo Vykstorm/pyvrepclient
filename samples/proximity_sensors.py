@@ -31,6 +31,10 @@ if __name__ == '__main__':
                 value = proximity_sensor.get_value()
                 print('Sensor value: {}'.format(value))
                 sleep(1)
+
+        except Exception as e:
+            print('Something went wrong: {}'.format(e))
+
         finally:
             # Paramos la simulación
             simulation.stop()

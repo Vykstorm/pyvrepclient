@@ -36,6 +36,9 @@ if __name__ == '__main__':
             # Dejamos la simulación durante 10 segundos
             sleep(20)
 
+        except Exception as e:
+            print('Something went wrong: {}'.format(e))
+
         finally:
             # Paramos la simulación
             simulation.stop()
