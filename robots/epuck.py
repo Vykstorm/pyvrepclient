@@ -7,6 +7,9 @@ class EPuck(ObjectsCollection):
     Clase de utilidad para trabajar con el robot ePuck en una simulación V-rep
     '''
 
+    # Objeto raíz de ePuck en la escena V-rep
+    root = 'ePuck'
+
     # Definición de los componentes del robot E-Puck
 
     # Sensores de proximidad

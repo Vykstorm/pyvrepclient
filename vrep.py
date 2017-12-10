@@ -396,9 +396,12 @@ class ObjectsCollectionsProxy:
         if collection_name in self.cached:
             return self.cached[collection_name]
 
-        cls = self.collection_classes[collection_name]
-        collection = cls(self.scene)
-        self.cached[collection_name] = collection
+        try:
+            cls = self.collection_classes[collection_name]
+            collection = cls(self.scene)
+            self.cached[collection_name] = collection
+        except:
+            return None
         return collection
 
     def __getitem__(self, collection_name):
@@ -419,6 +422,8 @@ class ObjectsCollection:
     Se usa para definir colecciones de objetos en la escena V-rep
     '''
 
+    root = None
+
     proximity_sensors = {
 
     }
@@ -436,9 +441,17 @@ class ObjectsCollection:
     }
 
     class ObjectsProxy(TypedObjectsProxy):
-        def __init__(self, objects, object_type, name_mapping):
+        def __init__(self, objects, object_type, name_mapping, duplicate_offset):
             super().__init__(objects, object_type)
-            self.name_mapping = name_mapping
+
+            if not duplicate_offset is None:
+                if isinstance(name_mapping, dict):
+                    self.name_mapping = dict([(object_alias, object_name + '#' + str(duplicate_offset - 1)) for object_alias, object_name in name_mapping.items()])
+                else:
+                    self.name_mapping = [object_name + '#' + str(duplicate_offset - 1) for object_name in name_mapping]
+            else:
+                self.name_mapping = name_mapping
+
 
         def get(self, object_name):
             if isinstance(self.name_mapping, dict):
@@ -476,8 +489,57 @@ class ObjectsCollection:
             return len(self.name_mapping)
 
 
-    def __init__(self, scene):
-        self.proximity_sensors = self.ObjectsProxy(scene.objects, ProximitySensor, self.__class__.proximity_sensors)
-        self.vision_sensors = self.ObjectsProxy(scene.objects, VisionSensor, self.__class__.vision_sensors)
-        self.joints = self.ObjectsProxy(scene.objects, Joint, self.__class__.joints)
-        self.shapes = self.ObjectsProxy(scene.objects, Shape, self.__class__.shapes)
+    def __init__(self, scene, duplicate_offset = None):
+        self.duplicate_offset = duplicate_offset
+        self.scene = scene
+
+        try:
+            if self.root is None:
+                raise Exception()
+            if duplicate_offset is None:
+                if not scene.objects.has(self.root):
+                    raise ObjectNotFoundError(self.root)
+            else:
+                if not scene.objects.has(self.root + '#' + str(self.duplicate_offset - 1)):
+                    raise Exception()
+        except:
+            raise Exception('Failed to retrieve object`s collection root')
+
+
+        self.proximity_sensors = self.ObjectsProxy(self.scene.objects, ProximitySensor, self.__class__.proximity_sensors, self.duplicate_offset)
+        self.vision_sensors = self.ObjectsProxy(self.scene.objects, VisionSensor, self.__class__.vision_sensors, self.duplicate_offset)
+        self.joints = self.ObjectsProxy(self.scene.objects, Joint, self.__class__.joints, self.duplicate_offset)
+        self.shapes = self.ObjectsProxy(self.scene.objects, Shape, self.__class__.shapes, self.duplicate_offset)
+
+
+    def __getitem__(self, index):
+        if not self.duplicate_offset is None:
+            raise NotImplementedError()
+
+        if index == 0:
+            return self
+        try:
+            cls = self.__class__
+            duplicate = cls(self.scene, duplicate_offset = index)
+            return duplicate
+        except:
+            raise ObjectsCollectionNotFoundError(self.__class__.__name__)
+
+
+    class Iterator:
+        def __init__(self, collection):
+            self.collection = collection
+            self.index = 0
+
+        def __next__(self):
+            try:
+                item = self.collection[self.index]
+                self.index += 1
+                return item
+            except:
+                raise StopIteration
+
+    def __iter__(self):
+        if not self.duplicate_offset is None:
+            raise NotImplementedError()
+        return self.Iterator(self)
