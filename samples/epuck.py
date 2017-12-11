@@ -13,9 +13,10 @@ from math import pi
 
 if __name__ == '__main__':
     with Client('127.0.0.1:19997') as client:
-        scene = client.scene
-        epuck = scene.robots.epuck
         simulation = client.simulation
+        scene = simulation.scene
+        epuck = scene.robots.epuck
+
 
         # Iniciamos la simulación
         simulation.resume()
@@ -41,6 +42,7 @@ if __name__ == '__main__':
 
         except Exception as e:
             print('Something went wrong: {}'.format(e))
+
         finally:
             # Paramos la simulación
             simulation.stop()

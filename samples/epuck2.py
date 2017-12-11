@@ -16,8 +16,8 @@ from math import pi
 
 if __name__ == '__main__':
     with Client('127.0.0.1:19997') as client:
-        scene = client.scene
         simulation = client.simulation
+        scene = simulation.scene
 
         epucks = list(scene.robots.epuck)
         print('Working with {} robots'.format(len(epucks)))
