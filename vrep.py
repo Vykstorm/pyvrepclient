@@ -114,7 +114,7 @@ class Simulation:
         '''
         self.client = client
         self.scene = Scene(self.client)
-        self.remote_methods = RemoteMethodsProxy(self)
+        self.remote_methods = RemoteMethodsProxy(self.client)
         self.running = False
         self.init()
 
