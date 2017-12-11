@@ -63,3 +63,11 @@ class ObjectsCollectionNotFoundError(Exception):
     '''
     def __init__(self, collection_name):
         super().__init__('Failed to get object`s collection named "{}"', collection_name)
+
+
+class RemoteMethodError(Exception):
+    '''
+    Error lanzado al ejecutar un procedimiento remoto de V-rep
+    '''
+    def __init__(self, method_name):
+        super().__init__('Failed to execute remote V-rep method named "{}"', method_name)

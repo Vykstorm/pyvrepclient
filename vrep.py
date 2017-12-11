@@ -8,7 +8,7 @@ from vrep_sim import *
 
 from re import fullmatch
 from functools import reduce
-
+import json
 
 
 
@@ -72,6 +72,7 @@ class Client:
 
         self.simulation = Simulation(self)
         self.scene = Scene(self)
+        self.remote_methods = RemoteMethodsProxy(self)
 
     @alive
     def close(self):
@@ -119,7 +120,45 @@ class Client:
 
 
 
+class RemoteMethodsProxy:
+    '''
+    Clase auxiliar usada por Client para hacer llamadas a procedimientos remotos en un script lua en el
+    simulador V-rep
+    '''
+    class RemoteMethod:
+        def __init__(self, client, name):
+            self.client = client
+            self.name = name
 
+        def __call__(self, *args):
+            result = binds.simxCallScriptFunction(self.client.get_id(), 'ScriptHandler',
+                                                  binds.sim_scripttype_childscript,
+                                                  'function_proxy',
+                                                  [], [], [self.name, json.dumps(args)], bytearray(),
+                                                  binds.simx_opmode_blocking)
+            code, ints, floats, strings, buffer = result
+            try:
+                if code != 0:
+                    raise Exception()
+                try:
+                    result = tuple(json.loads(strings[0]))
+                    if len(result) == 0:
+                        return None
+                    return result[0] if len(result) == 1 else result
+                except:
+                    raise Exception()
+            except:
+                raise RemoteMethodError(self.name)
+
+
+    def __init__(self, client):
+        self.client = client
+
+    def __getitem__(self, method_name):
+        return self.RemoteMethod(self.client, method_name)
+
+    def __getattr__(self, method_name):
+        return self.__getitem__(method_name)
 
 
 class Scene:
