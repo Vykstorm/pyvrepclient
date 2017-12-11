@@ -56,7 +56,7 @@ class Client:
         if self.id == -1:
             raise ConnectionError(ip, port)
 
-        self.remote_methods = RemoteMethodsProxy(self)
+        self.simulation = Simulation(self)
 
     @alive
     def close(self):
@@ -104,57 +104,28 @@ class Client:
 
 
 
-class RemoteMethodsProxy:
-    '''
-    Clase auxiliar usada por Client para hacer llamadas a procedimientos remotos en un script lua en el
-    simulador V-rep
-    '''
-    class RemoteMethod:
-        def __init__(self, client, name):
-            self.client = client
-            self.name = name
-
-        def __call__(self, *args):
-            result = binds.simxCallScriptFunction(self.client.get_id(), 'ScriptHandler',
-                                                  binds.sim_scripttype_childscript,
-                                                  'function_proxy',
-                                                  [], [], [self.name, json.dumps(args)], bytearray(),
-                                                  binds.simx_opmode_blocking)
-            code, ints, floats, strings, buffer = result
-            try:
-                if code != 0:
-                    raise Exception()
-                try:
-                    result = tuple(json.loads(strings[0]))
-                    if len(result) == 0:
-                        return None
-                    return result[0] if len(result) == 1 else result
-                except:
-                    raise Exception()
-            except:
-                raise RemoteMethodError(self.name)
-
-
-    def __init__(self, client):
-        self.client = client
-
-    def __getitem__(self, method_name):
-        return self.RemoteMethod(self.client, method_name)
-
-    def __getattr__(self, method_name):
-        return self.__getitem__(method_name)
-
 
 class Simulation:
     def __init__(self, client):
         '''
         Inicializa la instancia.
-        :param client: Es una instancia de la clase Client con el que se ha establecido una conexión a la servidor
+        :param client: Es una instancia de la clase Client con el que se ha establecido una conexión a la servidor.
         API remoto de V-rep donde se llevará a cabo esta simulación.
         '''
         self.client = client
         self.scene = Scene(self.client)
+        self.remote_methods = RemoteMethodsProxy(self)
         self.running = False
+        self.init()
+
+    def init(self):
+        '''
+        Inicializa la simulación. Debe invocarse este método antes de usar cualquier otro.
+        :return:
+        '''
+        code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+        if code != 0:
+            raise Exception('Failed to initialize V-rep simulation')
 
     def resume(self):
         '''
@@ -204,6 +175,47 @@ class Simulation:
 
     def __exit__(self, exc_type, exc_val, exc_tc):
         self.stop()
+
+
+class RemoteMethodsProxy:
+    '''
+    Clase auxiliar usada por Client para hacer llamadas a procedimientos remotos en un script lua en el
+    simulador V-rep
+    '''
+    class RemoteMethod:
+        def __init__(self, client, name):
+            self.client = client
+            self.name = name
+
+        def __call__(self, *args):
+            result = binds.simxCallScriptFunction(self.client.get_id(), 'ScriptHandler',
+                                                  binds.sim_scripttype_childscript,
+                                                  'function_proxy',
+                                                  [], [], [self.name, json.dumps(args)], bytearray(),
+                                                  binds.simx_opmode_blocking)
+            code, ints, floats, strings, buffer = result
+            try:
+                if code != 0:
+                    raise Exception()
+                try:
+                    result = tuple(json.loads(strings[0]))
+                    if len(result) == 0:
+                        return None
+                    return result[0] if len(result) == 1 else result
+                except:
+                    raise Exception()
+            except:
+                raise RemoteMethodError(self.name)
+
+
+    def __init__(self, client):
+        self.client = client
+
+    def __getitem__(self, method_name):
+        return self.RemoteMethod(self.client, method_name)
+
+    def __getattr__(self, method_name):
+        return self.__getitem__(method_name)
 
 
 
