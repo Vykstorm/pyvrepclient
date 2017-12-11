@@ -4,7 +4,6 @@
 import vrep_binds as binds
 from vrep_errors import *
 from vrep_objects import *
-from vrep_sim import *
 
 from re import fullmatch
 from functools import reduce
@@ -31,19 +30,6 @@ class Client:
     '''
     Esta clase gestiona la conexión con la API remota de V-Rep
     Crea un cliente que se comunica con la API via sockets.
-
-    e.g:
-    client = vrep.Client(address = '127.0.0.1:19997')
-    client.do_something()
-    client.close()
-
-    Es importante invocar el método close() al finalizar.
-    También es posible usar la clase client utilizandola bajo un contexto with
-
-    with vrep.Client(address = '127.0.0.1:19997') as client:
-        client.do_something()
-
-    En este caso, el método close() es invocado automáticamente al finalizar el bloque with
     '''
     def __init__(self, address = '127.0.0.1:19997', comm_thread_cycle = 5):
         '''
@@ -70,8 +56,6 @@ class Client:
         if self.id == -1:
             raise ConnectionError(ip, port)
 
-        self.simulation = Simulation(self)
-        self.scene = Scene(self)
         self.remote_methods = RemoteMethodsProxy(self)
 
     @alive
@@ -161,51 +145,77 @@ class RemoteMethodsProxy:
         return self.__getitem__(method_name)
 
 
+class Simulation:
+    def __init__(self, client):
+        '''
+        Inicializa la instancia.
+        :param client: Es una instancia de la clase Client con el que se ha establecido una conexión a la servidor
+        API remoto de V-rep donde se llevará a cabo esta simulación.
+        '''
+        self.client = client
+        self.scene = Scene(self.client)
+        self.running = False
+
+    def resume(self):
+        '''
+        Resume la simulación.
+        '''
+        if not self.running:
+            code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception('Failed to resume V-rep simulation')
+
+            self.running = True
+
+    def pause(self):
+        '''
+        La ejecución de la simulación queda pausada.
+        :return:
+        '''
+        if self.running:
+            code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception('Failed to pause V-rep simulation')
+
+
+    def stop(self):
+        '''
+        La simulación finaliza. Para comenzar otra nueva simulación, ejecutar de nuevo el método
+        resume()
+        :return:
+        '''
+        if self.running:
+            code = binds.simxStopSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception('Failed to stop V-rep simulation')
+
+            self.running = False
+
+    def is_running(self):
+        '''
+        Comprueba si la simulación esta activa. Será True después de haber invocado resume() y False después
+        de la ejecución del método stop()
+        '''
+        return self.running
+
+    def __enter__(self):
+        self.resume()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tc):
+        self.stop()
+
+
+
 class Scene:
     '''
     Esta clase permite obtener información de los objetos de la escena del simulador V-rep.
-
-    e.g:
-
-    with Client(address = '127.0.0.1:19997') as client:
-        scene = client.scene
-
-        # Puedes consultar los objetos de la escena de varias formas. En este caso obtenemos un
-        # objeto llamado 'camera'
-        cam = scene.objects.camera
-        cam = scene.objects['camera']
-        cam = scene.get_object('camera')
-
-        # En el primer  y segundo caso, si el objeto 'camera' no existe, genera una excepción. En el último
-        # caso simplemente devolvería None
-
-        # Para asegurarnos que un objeto es de un determinado tipo, podemos consultarlo de la siguiente
-        # forma...
-        cam = scene.vision_sensors.camera
-        cam = scene.vision_sensors.get('camera')
-        cam = scene.vision_sensors['camera']
-
-        # De esta forma, si 'camera' no es un sensor de visión, se genera una excepción.
-        # Puedes usar también: scene.cameras, scene.proximity_sensors, scene.joints y scene.shapes
-        # del mismo modo.
-
-        # Podemos obtener todos los objetos de la escena
-        objs = list(scene.objects)
-        objs = [object for object in scene.objects]
-        objs = scene.get_all_objects()
-
-        # O también obtener todos los objetos con un tipo específico.
-        sensors = list(scene.proximity_sensors)
-        sensors = [sensor for sensor in scene.proximity_sensors]
-        sensors = scene.get_all_objects_of_type(ProximitySensor)
     '''
-
-
     def __init__(self, client):
         '''
         Inicializa la instancia.
         :param client:  Es una instancia de la clase Client con el que se ha establecido una conexión a la servidor
-        API remoto de V-rep donde se llevará a cabo esta simulación.
+        API remoto de V-rep donde se llevará a cabo esta simulación
         '''
         self.client = client
 
