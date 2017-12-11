@@ -19,8 +19,8 @@ if __name__ == '__main__':
         scene = client.scene
         simulation = client.simulation
 
-
         epucks = list(scene.robots.epuck)
+        print('Working with {} robots'.format(len(epucks)))
 
         # Iniciamos la simulación
         simulation.resume()

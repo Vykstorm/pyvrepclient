@@ -1,14 +1,13 @@
 
 
 '''
-Ejemplo que demuestra como utilizar la clase EPuck que se provee para trabajar con robots ePuck en V-rep
+Ejemplo que demuestra como utilizar esta librería para manejar el robot ePuck, obtener información
+de los sensores de proximidad y controlar los motores del mismo de forma remota.
+
+Carga antes primero la escena preparada para este programa en el simulador V-rep llamada "epuck.ttt", en
+el directorio scenes/
 '''
 
-from time import sleep
-
-from PIL import Image
-
-from robots.epuck import EPuck
 from vrep import Client
 from math import pi
 
