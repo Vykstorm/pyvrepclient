@@ -56,6 +56,7 @@ class Client:
         if self.id == -1:
             raise ConnectionError(ip, port)
 
+        self.remote_methods = RemoteMethodsProxy(self)
         self.simulation = Simulation(self)
 
     @alive
@@ -113,18 +114,23 @@ class Simulation:
         API remoto de V-rep donde se llevará a cabo esta simulación.
         '''
         self.client = client
-        self.scene = Scene(self.client)
-        self.remote_methods = RemoteMethodsProxy(self.client)
         self.running = False
         self.init()
+        self.scene = Scene(self.client)
 
     def init(self):
         '''
         Inicializa la simulación. Debe invocarse este método antes de usar cualquier otro.
         :return:
         '''
-        code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
-        if code != 0:
+        try:
+            code = binds.simxStartSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception()
+            code = binds.simxPauseSimulation(self.client.get_id(), binds.simx_opmode_blocking)
+            if code != 0:
+                raise Exception()
+        except:
             raise Exception('Failed to initialize V-rep simulation')
 
     def resume(self):
@@ -292,19 +298,26 @@ class ObjectsProxy:
     '''
     def __init__(self, client):
         self.client = client
-        self.object_type = {}
+
         self.cached_objects = {}
-        self.object_types = [Joint, ProximitySensor, VisionSensor, Shape]
         self.bind_object_types = {
-            Joint : binds.sim_object_joint_type,
-            ProximitySensor : binds.sim_object_proximitysensor_type,
-            VisionSensor : binds.sim_object_visionsensor_type,
-            Shape : binds.sim_object_shape_type
+            binds.sim_object_joint_type : Joint,
+            binds.sim_object_proximitysensor_type : ProximitySensor,
+            binds.sim_object_visionsensor_type : VisionSensor,
+            binds.sim_object_shape_type : Shape
         }
+        objects_info = self.client.remote_methods.get_objects_info()
+        self.object_handlers = dict([(object_name, object_handler) for object_handler, object_name, object_type in objects_info])
+        self.object_types = dict([(object_name, self.bind_object_types[object_type]) for object_handler, object_name, object_type in objects_info])
+        self.objects_by_type = dict([(object_type, [object_name for object_name in self.object_types if self.object_types[object_name] == object_type])
+                                     for object_type in self.bind_object_types.values()])
+
         self.joints = TypedObjectsProxy(self, Joint)
         self.proximity_sensors = TypedObjectsProxy(self, ProximitySensor)
         self.vision_sensors = TypedObjectsProxy(self, VisionSensor)
         self.shapes = TypedObjectsProxy(self, Shape)
+
+
 
     def get(self, object_name):
         '''
@@ -315,17 +328,13 @@ class ObjectsProxy:
         if object_name in self.cached_objects:
             return self.cached_objects[object_name]
 
-        code, handler = binds.simxGetObjectHandle(self.client.get_id(), object_name, binds.simx_opmode_blocking)
-        if code != 0:
+        if not self.has(object_name):
             return None
-
-        object_type = self._get_type(handler)
-
-        if object_type is None:
-            raise Exception('Object retrieve from V-rep remote API has unrecognized type')
+        object_handler = self.object_handlers[object_name]
+        object_type = self.object_types[object_name]
 
         cls = object_type
-        object = cls(client = self.client, id = handler)
+        object = cls(client = self.client, id = object_handler)
         self.cached_objects[object_name] = object
 
         return object
@@ -336,22 +345,8 @@ class ObjectsProxy:
         :param object_name:
         :return:
         '''
-        return not self.get(object_name) is None
+        return object_name in self.object_handlers
 
-    def _get_type(self, handler):
-        if handler in self.object_type:
-            return self.object_type[handler]
-        else:
-            object_types = self.object_types
-            for object_type in object_types:
-                objects = self.get_all_of_type(object_type)
-                for object in objects:
-                    self.object_type[object.get_id()] = object_type
-
-                if handler in [object.get_id() for object in objects]:
-                    return object_type
-
-            return None
 
 
     def get_all_of_type(self, object_type):
@@ -362,20 +357,7 @@ class ObjectsProxy:
         :param object_type:
         :return:
         '''
-        code, handlers = binds.simxGetObjects(self.client.get_id(), self.bind_object_types[object_type], binds.simx_opmode_blocking)
-        if code != 0:
-            raise Exception('Failed to retrieve objects of type {} from V-rep remote api server', object_type.__name__)
-
-        cls = object_type
-        objects = []
-        cached_handlers = [object.get_id() for object in self.cached_objects.values()]
-        for handler in handlers:
-            if handler in cached_handlers:
-                object = next(iter([object for object in self.cached_objects.values() if object.get_id() == handler]))
-            else:
-                object = cls(client = self.client, id = handler)
-            objects.append(object)
-        return objects
+        return [self.get(object_name) for object_name in self.objects_by_type[object_type]]
 
 
     def get_all(self):
@@ -383,8 +365,7 @@ class ObjectsProxy:
         Devuelve todos los objetos de la escena V-rep
         :return:
         '''
-        return reduce(lambda x,y:x+y, [self.get_all_of_type(object_type) for object_type in self.object_types])
-
+        return [self.get(object_name) for object_name in self.object_handlers]
 
     def __iter__(self):
         return iter(self.get_all())
