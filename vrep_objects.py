@@ -3,6 +3,7 @@ import vrep_binds as binds
 import numpy as np
 from PIL import Image
 from vectormath import Vector3
+from functools import reduce
 
 class Object:
     '''
@@ -48,6 +49,7 @@ class Sensor(Object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.streamed = False
+        self.processors = []
 
 
     def start_streaming(self):
@@ -94,7 +96,12 @@ class Sensor(Object):
             except:
                 value = self.initial_value
 
+        for processor in self.processors:
+            value = processor(value)
         return value
+
+    def add_processor(self, processor):
+        self.processors.append(processor)
 
 
 class ProximitySensor(Sensor):
