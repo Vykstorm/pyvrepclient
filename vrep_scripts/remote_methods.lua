@@ -29,11 +29,3 @@ function get_objects_info()
     end
     return objects_info
 end
-
-
--- Este código es incluido para que al iniciar la simulación esta se pause automáticamente, para poder ejecutar
--- remotamente las funciones de este script sin que la simulación este activa. El cliente posteriormente puede
--- resumir la simulación.
-if (sim_call_type==sim_childscriptcall_initialization) then
-    simPauseSimulation()
-end
