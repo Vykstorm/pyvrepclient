@@ -12,8 +12,8 @@ from PIL import Image
 
 if __name__ == '__main__':
     with Client(address = '127.0.0.1:19997') as client:
-        scene = client.scene
         simulation = client.simulation
+        scene = simulation.scene
 
         # Comenzamos la simulación
         simulation.resume()

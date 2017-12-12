@@ -1,11 +1,15 @@
 
 
-
 from vrep import Client
+import vrep_binds as binds
+import json
+
+
+
 
 
 with Client('127.0.0.1:19997') as client:
-    scene = client.scene
+    simulation = client.simulation
+    simulation.resume()
 
-    for myrobots in scene.robots.epuck:
-        print(myrobots)
+
