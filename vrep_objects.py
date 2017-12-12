@@ -81,12 +81,20 @@ class Sensor(Object):
             raise Exception('Error getting sensor data: V-rep simulation is not running')
 
         if not self.streamed:
-            data = self._get_data(streamed = False)
+            data = self._get_data(streamed=False)
             self.start_streaming()
+            self.initial_value = data
+            value = data
         else:
-            data = self._get_data(streamed = True)
+            try:
+                data = self._get_data(streamed=True)
+                value = data
+                if hasattr(self, 'initial_value'):
+                    delattr(self, 'initial_value')
+            except:
+                value = self.initial_value
 
-        return data
+        return value
 
 
 class ProximitySensor(Sensor):
@@ -117,8 +125,7 @@ class ProximitySensor(Sensor):
         opmode = binds.simx_opmode_blocking if not streamed else binds.simx_opmode_buffer
         values = binds.simxReadProximitySensor(self.client.get_id(), self.get_id(), opmode)
         code = values[0]
-
-        if not code in [0, 1]:
+        if code != 0:
             raise Exception('Error getting proxmity sensor data from client buffer')
 
         detected_state, detected_point, detected_object, detected_surface_normal = values[1:]
@@ -152,7 +159,7 @@ class VisionSensor(Sensor):
 
         values = binds.simxGetVisionSensorImage(self.client.get_id(), self.get_id(), 0, opmode)
         code = values[0]
-        if not code in [0, 1]:
+        if code != 0:
             raise Exception('Error getting vision sensor data from client buffer')
         native_size, pixels = values[1:]
         native_size = tuple(native_size)
