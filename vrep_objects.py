@@ -107,7 +107,7 @@ class Sensor(Object):
         super().__init__(*args, **kwargs)
         self.streamed = False
         self.processors = []
-
+        self.initial_value = None
 
     def start_streaming(self):
         '''
@@ -148,9 +148,11 @@ class Sensor(Object):
             try:
                 data = self._get_data(streamed=True)
                 value = data
-                if hasattr(self, 'initial_value'):
-                    delattr(self, 'initial_value')
-            except:
+                if not self.initial_value is None:
+                    self.initial_value = None
+            except Exception as exc:
+                if self.initial_value is None:
+                    raise exc
                 value = self.initial_value
 
         for processor in self.processors:
