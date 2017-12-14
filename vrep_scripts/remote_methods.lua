@@ -24,7 +24,11 @@ function get_objects_info()
         local object_handles = simGetObjectsInTree(sim_handle_scene, object_type, 1)
         for _, object_handle in ipairs(object_handles) do
             local object_name = simGetObjectName(object_handle)
-            table.insert(objects_info, {object_handle, object_name, object_type})
+            if object_type == sim_object_joint_type then
+                table.insert(objects_info, {object_handle, object_name, simGetJointType(object_handle)})
+            else
+                table.insert(objects_info, {object_handle, object_name, object_type})
+            end
         end
     end
     return objects_info

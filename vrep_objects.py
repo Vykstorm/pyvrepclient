@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from vectormath import Vector3
 from vrep_errors import Exception
+from math import radians
 
 class Object:
     '''
@@ -25,18 +26,74 @@ class Object:
 
 class Joint(Object):
     '''
-    Representa un objeto del tipo 'Joint' (motor)
+    Representa un objeto del tipo 'Joint' (una unión entre varios objetos) que puede ser pasivo o
+    activo (actua como un motor)
     '''
-    def set_velocity(self, amount):
+    def _set_velocity(self, amount):
         '''
         Establece la velocidad del motor.
-        :param amount: Es la velocidad del motor, en metros/segundo si es del tipo 'prismatic joint',
-        o en radianes/segundo si es del tipo 'prismatic joint'
+        :param amount: Es la velocidad del motor, en metros/segundo o en radianes/segundo en función del
+        tipo de unión.
         :return:
         '''
         code = binds.simxSetJointTargetVelocity(self.client.get_id(), self.get_id(), amount, binds.simx_opmode_oneshot)
         if not code in [0, 1]:
             raise Exception('Failed to set velocity to V-rep joint object')
+
+    def _set_linear_velocity(self, amount):
+        '''
+        Establece la velocidad lineal actual (en metros/segundo)
+        :param amount:
+        :return:
+        '''
+        self._set_velocity(amount)
+
+    def _set_angular_velocity(self, amount):
+        '''
+        Establece la velocidad angular actual (en grados sexagesimales / segundo)
+        :param amount:
+        :return:
+        '''
+        self._set_velocity(radians(amount))
+
+
+class PrismaticJoint(Joint):
+    '''
+    Es un tipo de unión que puede llevar a cabo movimientos de translación con un grado de libertad.
+    '''
+    def set_velocity(self, amount):
+        '''
+        Establece la velocidad actual de la unión (en metros / segundo)
+        :param amount:
+        :return:
+        '''
+        self._set_linear_velocity(amount)
+
+
+class SphericalJoint(Joint):
+    '''
+    Es un tipo de unión que puede realizar movimientos de rotación con tres grados de libertad.
+    '''
+    def set_velocity(self, amount):
+        '''
+        Establece la velocidad actual de la unión (en grados sexagesimales / segundo)
+        :param amount:
+        :return:
+        '''
+        self._set_angular_velocity(amount)
+
+
+class RevoluteJoint(Joint):
+    '''
+    Es un tipo de unión que realiza movimientos de rotación con un grado de libertad.
+    '''
+    def set_velocity(self, amount):
+        '''
+        Establece la velocidad actual de la unión (en grados sexagesimales / segundo)
+        :param amount:
+        :return:
+        '''
+        self._set_angular_velocity(amount)
 
 
 

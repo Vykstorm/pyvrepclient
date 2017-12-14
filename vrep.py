@@ -301,12 +301,17 @@ class ObjectsProxy:
 
         self.cached_objects = {}
         self.bind_object_types = {
-            binds.sim_object_joint_type : Joint,
+            # binds.sim_object_joint_type : Joint,
+            binds.sim_joint_revolute_subtype : RevoluteJoint,
+            binds.sim_joint_prismatic_subtype : PrismaticJoint,
+            binds.sim_joint_spherical_subtype : SphericalJoint,
             binds.sim_object_proximitysensor_type : ProximitySensor,
             binds.sim_object_visionsensor_type : VisionSensor,
             binds.sim_object_shape_type : Shape
         }
         objects_info = self.client.remote_methods.get_objects_info()
+        objects_info = [(object_handler, object_name, object_type) for object_handler, object_name, object_type in objects_info if object_type in self.bind_object_types]
+
         self.object_handlers = dict([(object_name, object_handler) for object_handler, object_name, object_type in objects_info])
         self.object_types = dict([(object_name, self.bind_object_types[object_type]) for object_handler, object_name, object_type in objects_info])
         self.objects_by_type = dict([(object_type, [object_name for object_name in self.object_types if self.object_types[object_name] == object_type])
