@@ -28,23 +28,19 @@ if __name__ == '__main__':
         try:
             print('Starting simulation')
 
-            for epuck in epucks:
-                epuck.left_motor.set_velocity(0)
-                epuck.right_motor.set_velocity(0)
-
             while True:
                 for epuck in epucks:
                     v1, v2 = epuck.prox_sensor15.get_value(), epuck.prox_sensor345.get_value()
                     v3, v4 = epuck.prox_sensor90.get_value(), epuck.prox_sensor270.get_value()
                     if v3 > 0 or v1 > 0 or v2 > 0:
-                        epuck.left_motor.set_velocity(-pi / 2)
-                        epuck.right_motor.set_velocity(pi / 2)
+                        epuck.left_motor.set_velocity(-90)
+                        epuck.right_motor.set_velocity(90)
                     elif v4 > 0:
-                        epuck.left_motor.set_velocity(pi / 2)
-                        epuck.right_motor.set_velocity(-pi / 2)
+                        epuck.left_motor.set_velocity(90)
+                        epuck.right_motor.set_velocity(-90)
                     else:
-                        epuck.right_motor.set_velocity(pi)
-                        epuck.left_motor.set_velocity(pi)
+                        epuck.right_motor.set_velocity(180)
+                        epuck.left_motor.set_velocity(180)
 
 
         except Exception as e:
