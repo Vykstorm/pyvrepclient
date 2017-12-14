@@ -5,6 +5,8 @@ from types import SimpleNamespace as Namespace
 class EPuck(ObjectsCollection):
     '''
     Clase de utilidad para trabajar con el robot ePuck en una simulación V-rep
+
+    Las mediciones de los sensores de proximidad están normalizadas en el rango [0, 1]
     '''
 
     # Objeto raíz de ePuck en la escena V-rep
@@ -66,3 +68,9 @@ class EPuck(ObjectsCollection):
                                 right = self.joints.right_motor)
         self.left_motor = self.motors.left
         self.right_motor = self.motors.right
+
+
+        # Configuramos los sensores de proximidad para normalizar las mediciones en
+        # el rango [0, 1]
+        for proximity_sensor in self.proximity_sensors:
+            proximity_sensor.set_max_detection_distance(0.04)
