@@ -139,9 +139,10 @@ class ProximitySensor(Sensor):
             return 0
         detected_point = Vector3(detected_point)
         length = detected_point.length
-        print(length)
-        value = 1 / (length + 1) if length < self.max_detection_distance else 0
-        return value
+
+        if self.max_detection_distance < float('inf'):
+            return 1 - length / self.max_detection_distance if length < self.max_detection_distance else 0
+        return 1 / (1 + length)
 
     def set_max_detection_distance(self, max_detection_distance):
         self.max_detection_distance = max_detection_distance
