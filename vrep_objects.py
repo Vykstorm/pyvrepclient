@@ -3,7 +3,7 @@ import vrep_binds as binds
 import numpy as np
 from PIL import Image
 from vectormath import Vector3
-from functools import reduce
+from vrep_errors import Exception
 
 class Object:
     '''
@@ -108,14 +108,13 @@ class ProximitySensor(Sensor):
     '''
     Representa un sensor de proximidad
 
-    Se determina el valor del sensor como el inverso de la distancia calculada
+    El valor del sensor es proporcional al inverso de la distancia calculada
     a la superficie detectada por el mismo (en unidades del simulador V-rep, es decir, metros)
-    Casos especiales:
-    - Si la distancia calculada por el sensor a la superficie detectada es 0 la medición del sensor
-    será "inf"
-    - El sensor no ha detectado ninguna superficie en su rango de acción. En este caso se devuelve el valor 0.
-
     '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_detection_distance = float('inf')
+
 
     def start_streaming(self):
         super().start_streaming()
@@ -140,9 +139,12 @@ class ProximitySensor(Sensor):
             return 0
         detected_point = Vector3(detected_point)
         length = detected_point.length
-        value = 1 / length if length > 0 else float('inf')
+        print(length)
+        value = 1 / (length + 1) if length < self.max_detection_distance else 0
         return value
 
+    def set_max_detection_distance(self, max_detection_distance):
+        self.max_detection_distance = max_detection_distance
 
 class VisionSensor(Sensor):
     '''
@@ -200,7 +202,7 @@ class VisionSensor(Sensor):
 
             return image
         except:
-            raise Exception('Error getting image from vision sensor pixels data')
+            raise Exception('Error getting image`s pixels data from vision sensor')
 
 
 
@@ -209,4 +211,3 @@ class Shape(Object):
     Representa una figura geométrica de la escena (Esferas, cubos, ...)
     '''
     pass
-
