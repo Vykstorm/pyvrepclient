@@ -4,6 +4,8 @@
 '''
 Es igual que el ejemplo 1 de como usar robots ePuck en la escena V-rep, solo que ahora se manejan
 dos ePucks en vez de uno
+Antes de ejecutar este script, carga en el programa V-rep la escena llamada "epuck_example2.ttt" en el
+directorio scenes/
 '''
 
 from time import sleep

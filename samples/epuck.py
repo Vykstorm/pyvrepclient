@@ -4,7 +4,7 @@
 Ejemplo que demuestra como utilizar esta librería para manejar el robot ePuck, obtener información
 de los sensores de proximidad y controlar los motores del mismo de forma remota.
 
-Carga antes primero la escena preparada para este programa en el simulador V-rep llamada "epuck.ttt", en
+Carga antes primero la escena preparada para este programa en el simulador V-rep llamada "epuck_example1.ttt", en
 el directorio scenes/
 '''
 
