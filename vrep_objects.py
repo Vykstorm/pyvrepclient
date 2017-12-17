@@ -57,6 +57,21 @@ class Joint(Object):
         self._set_velocity(radians(amount))
 
 
+    def set_velocity(self, amount):
+        raise NotImplementedError()
+
+
+    @property
+    def velocity(self):
+        raise NotImplementedError()
+
+    @velocity.setter
+    def velocity(self, amount):
+        self.set_velocity(amount)
+
+    speed = velocity
+
+
 class PrismaticJoint(Joint):
     '''
     Es un tipo de unión que puede llevar a cabo movimientos de translación con un grado de libertad.
@@ -68,7 +83,6 @@ class PrismaticJoint(Joint):
         :return:
         '''
         self._set_linear_velocity(amount)
-
 
 class SphericalJoint(Joint):
     '''

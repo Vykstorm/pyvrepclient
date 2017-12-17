@@ -35,14 +35,14 @@ if __name__ == '__main__':
                     v1, v2 = epuck.prox_sensor15.get_value(), epuck.prox_sensor345.get_value()
                     v3, v4 = epuck.prox_sensor90.get_value(), epuck.prox_sensor270.get_value()
                     if v3 > 0 or v1 > 0 or v2 > 0:
-                        epuck.left_motor.set_velocity(-90)
-                        epuck.right_motor.set_velocity(90)
+                        epuck.left_motor.speed = -90
+                        epuck.right_motor.speed = 90
                     elif v4 > 0:
-                        epuck.left_motor.set_velocity(90)
-                        epuck.right_motor.set_velocity(-90)
+                        epuck.left_motor.speed = 90
+                        epuck.right_motor.speed = -90
                     else:
-                        epuck.right_motor.set_velocity(180)
-                        epuck.left_motor.set_velocity(180)
+                        epuck.right_motor.speed = 180
+                        epuck.left_motor.speed = 180
 
 
         except Exception as e:
