@@ -35,10 +35,10 @@ cd vrep
 ```
 
 - Ahora para probar la librería, abre una escena de prueba ya preparada con la opción "Open Scene..." del simulador V-rep.
-Abre la escena "epuck_example1.ttt" en el directorio "scenes/" de este repositorio.
+Abre la escena [epuck_example1.ttt](scenes/epuck_example1.ttt) en el directorio [scenes/](scenes/) de este repositorio.
 
-- Una vez cargada, ejecuta el script Python epuck.py en el directorio "samples/" y observa que es lo que ocurre en el simulador.
 
+- Una vez cargada, ejecuta el script Python [epuck.py](samples/epuck.py) en el directorio [samples/](samples/) y observa que es lo que ocurre en el simulador.
 
 
 
