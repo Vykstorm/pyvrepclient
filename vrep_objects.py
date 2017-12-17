@@ -170,6 +170,11 @@ class Sensor(Object):
 
         return value
 
+
+    @property
+    def value(self):
+        return self.get_value()
+
 class ProximitySensor(Sensor):
     '''
     Representa un sensor de proximidad
