@@ -13,7 +13,7 @@ pyvrepclient es un wrapper sobre la extensión de V-rep en Python que facilita e
 ```
 git clone https://github.com/Vykstorm/pyvrepclient.git
 ```
-- Ejecutar el script build.sh para generar el archivo remoteApi.so
+- Ejecutar el script build.sh para compilar las librerías dinámicas necesarias
 ```
 cd pyvrepclient
 ./build.sh
@@ -22,7 +22,7 @@ cd pyvrepclient
 - Descargar el simulador V-rep de la página oficial (la versión EDU es gratuita)
 http://www.coppeliarobotics.com/downloads.html
 
-También puedes ejecutar este código para obtener el simulador (Linux 64-bit)
+También puedes ejecutar este código(Linux 64-bit)
 ```
 wget http://coppeliarobotics.com/files/V-REP_PRO_EDU_V3_4_0_Linux.tar.gz
 tar -xzvf V-REP_PRO_EDU_V3_4_0_Linux.tar.gz
@@ -33,3 +33,12 @@ mv V-REP_PRO_EDU_V3_4_0_Linux vrep
 cd vrep
 ./vrep.sh
 ```
+
+- Ahora para probar la librería, abre una escena de prueba ya preparada con la opción "Open Scene..." del simulador V-rep.
+Abre la escena "epuck_example1.ttt" en el directorio "scenes/" de este repositorio.
+
+- Una vez cargada, ejecuta el script Python epuck.py en el directorio "samples/" y observa que es lo que ocurre en el simulador.
+
+
+
+
