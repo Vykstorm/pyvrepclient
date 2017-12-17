@@ -25,6 +25,7 @@ if __name__ == '__main__':
         try:
             # Obtenemos la imágen (es un objeto PIL)
             image = epuck.camera.get_image(mode = 'RGB', size = (256, 256))
+            # image = epuck.camera.image
 
             # Mostramos la imágen
             image.transpose(Image.FLIP_TOP_BOTTOM).show()

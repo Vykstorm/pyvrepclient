@@ -276,7 +276,9 @@ class VisionSensor(Sensor):
         except:
             raise Exception('Error getting image`s pixels data from vision sensor')
 
-
+    @property
+    def image(self):
+        return self.get_image()
 
 class Shape(Object):
     '''
