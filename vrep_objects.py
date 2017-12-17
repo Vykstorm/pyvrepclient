@@ -120,7 +120,6 @@ class Sensor(Object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.streamed = False
-        self.processors = []
         self.initial_value = None
 
     def start_streaming(self):
@@ -169,13 +168,7 @@ class Sensor(Object):
                     raise exc
                 value = self.initial_value
 
-        for processor in self.processors:
-            value = processor(value)
         return value
-
-    def add_processor(self, processor):
-        self.processors.append(processor)
-
 
 class ProximitySensor(Sensor):
     '''
