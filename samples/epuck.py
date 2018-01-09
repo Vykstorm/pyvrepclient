@@ -27,10 +27,11 @@ if __name__ == '__main__':
             while True:
                 v1, v2 = epuck.prox_sensor15.value, epuck.prox_sensor345.value
                 v3, v4 = epuck.prox_sensor90.value, epuck.prox_sensor270.value
-                if v3 > 0 or v1 > 0 or v2 > 0:
+
+                if v1 <= 0.04 or v2 <= 0.04 or v3 <= 0.04:
                     epuck.left_motor.speed = -90
                     epuck.right_motor.speed = 90
-                elif v4 > 0:
+                elif v4 <= 0.04:
                     epuck.left_motor.speed = 90
                     epuck.right_motor.speed = -90
                 else:
