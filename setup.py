@@ -11,5 +11,6 @@ setup(
     license = 'MIT',
     zip_safe = False,
     packages = [''],
-    install_requires = ['numpy', 'Pillow', 'vectormath']
+    install_requires = ['numpy', 'Pillow', 'vectormath'],
+    include_package_data = True
 )
