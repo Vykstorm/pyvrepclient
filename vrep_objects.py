@@ -179,12 +179,11 @@ class ProximitySensor(Sensor):
     '''
     Representa un sensor de proximidad
 
-    El valor del sensor es proporcional al inverso de la distancia calculada
-    a la superficie detectada por el mismo (en unidades del simulador V-rep, es decir, metros)
+    El sensor puede calcular la distancia a un objeto detectado.
+    El valor del sensor está en metros. Si no se detecta ningún objeto, el valor del sensor devuelve float('inf')
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.max_detection_distance = float('inf')
 
 
     def start_streaming(self):
@@ -207,16 +206,10 @@ class ProximitySensor(Sensor):
 
         detected_state, detected_point, detected_object, detected_surface_normal = values[1:]
         if not detected_state:
-            return 0
+            return float('inf')
         detected_point = Vector3(detected_point)
         length = detected_point.length
-
-        if self.max_detection_distance < float('inf'):
-            return 1 - length / self.max_detection_distance if length < self.max_detection_distance else 0
-        return 1 / (1 + length)
-
-    def set_max_detection_distance(self, max_detection_distance):
-        self.max_detection_distance = max_detection_distance
+        return length
 
 class VisionSensor(Sensor):
     '''
