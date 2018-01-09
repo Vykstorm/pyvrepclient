@@ -11,8 +11,6 @@ import json
 
 
 
-
-
 def alive(unchecked_method):
     '''
     Decorador auxiliar para los métodos de la clase Client. Sirve para añadir código de comprobación al inicio de estas
@@ -242,8 +240,7 @@ class Scene:
         self.proximity_sensors = self.objects.proximity_sensors
         self.vision_sensors = self.objects.vision_sensors
         self.shapes = self.objects.shapes
-        from robots import robots
-        self.robots = ObjectsCollectionsProxy(self, robots)
+        self.robots = ObjectsCollectionsProxy(self, robots.classes)
 
     def get_object(self, object_name):
         '''
@@ -590,3 +587,5 @@ class ObjectsCollection:
         if not self.duplicate_offset is None:
             raise NotImplementedError()
         return self.Iterator(self)
+
+import robots
