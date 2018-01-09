@@ -4,7 +4,6 @@ import numpy as np
 from PIL import Image
 from vectormath import Vector3
 from vrep_errors import Exception
-from math import radians
 
 class Object:
     '''
@@ -50,11 +49,11 @@ class Joint(Object):
 
     def _set_angular_velocity(self, amount):
         '''
-        Establece la velocidad angular actual (en grados sexagesimales / segundo)
+        Establece la velocidad angular actual (en radianes / segundo)
         :param amount:
         :return:
         '''
-        self._set_velocity(radians(amount))
+        self._set_velocity(amount)
 
 
     def set_velocity(self, amount):
@@ -90,7 +89,7 @@ class SphericalJoint(Joint):
     '''
     def set_velocity(self, amount):
         '''
-        Establece la velocidad actual de la unión (en grados sexagesimales / segundo)
+        Establece la velocidad actual de la unión (en radianes / segundo)
         :param amount:
         :return:
         '''
@@ -103,7 +102,7 @@ class RevoluteJoint(Joint):
     '''
     def set_velocity(self, amount):
         '''
-        Establece la velocidad actual de la unión (en grados sexagesimales / segundo)
+        Establece la velocidad actual de la unión (en radianes / segundo)
         :param amount:
         :return:
         '''
