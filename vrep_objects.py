@@ -277,3 +277,47 @@ class Shape(Object):
     Representa una figura geométrica de la escena (Esferas, cubos, ...)
     '''
     pass
+
+
+class Light(Object):
+    '''
+    Representa una fuente de luz de la escena.
+    '''
+    @property
+    def enabled(self):
+        raise NotImplementedError()
+
+    @enabled.setter
+    def enabled(self, state):
+        '''
+        La propiedad .enabled activa / desactiva la fuente de luz
+        '''
+        self.client.async_remote_methods.setLightState(self.get_id(), state)
+
+
+    @property
+    def diffuse(self):
+        raise NotImplementedError()
+
+    @diffuse.setter
+    def diffuse(self, color):
+        '''
+        La propiedad diffuse establece la componente difusa de color de la luz.
+        :param color: Es una tupla con tres componentes (valores RGB de color)
+        Cada componente debe estar normalizada en el rango [0, 256)
+        '''
+        self.client.async_remote_methods.setLightDiffusePart(self.get_id(), color)
+
+
+    @property
+    def specular(self, color):
+        raise NotImplementedError()
+
+    @specular.setter
+    def specular(self, color):
+        '''
+        La propiedad specular establece la componente especular de color de la luz.
+        :param color: Es una tupla con tres componentes (valores RGB de color).
+        Cada componente debe estar normalizada en el rango [0, 256)
+        '''
+        self.client.async_remote_methods.setLightSpecularPart(self.get_id(), color)

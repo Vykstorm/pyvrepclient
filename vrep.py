@@ -54,7 +54,8 @@ class Client:
         if self.id == -1:
             raise ConnectionError(ip, port)
 
-        self.remote_methods = RemoteMethodsProxy(self)
+        self.sync_remote_methods = RemoteMethodsProxy(self, async = False)
+        self.async_remote_methods = RemoteMethodsProxy(self, async = True)
         self.simulation = Simulation(self)
 
     @alive
@@ -187,36 +188,39 @@ class RemoteMethodsProxy:
     simulador V-rep
     '''
     class RemoteMethod:
-        def __init__(self, client, name):
+        def __init__(self, client, name, async):
             self.client = client
             self.name = name
+            self.async = async
 
         def __call__(self, *args):
             result = binds.simxCallScriptFunction(self.client.get_id(), 'ScriptHandler',
                                                   binds.sim_scripttype_childscript,
                                                   'function_proxy',
                                                   [], [], [self.name, json.dumps(args)], bytearray(),
-                                                  binds.simx_opmode_blocking)
-            code, ints, floats, strings, buffer = result
-            try:
-                if code != 0:
-                    raise Exception()
+                                                  binds.simx_opmode_blocking if not self.async else binds.simx_opmode_oneshot)
+            if not self.async:
+                code, ints, floats, strings, buffer = result
                 try:
-                    result = tuple(json.loads(strings[0]))
-                    if len(result) == 0:
-                        return None
-                    return result[0] if len(result) == 1 else result
+                    if code != 0:
+                        raise Exception()
+                    try:
+                        result = tuple(json.loads(strings[0]))
+                        if len(result) == 0:
+                            return None
+                        return result[0] if len(result) == 1 else result
+                    except:
+                        raise Exception()
                 except:
-                    raise Exception()
-            except:
-                raise RemoteMethodError(self.name)
+                    raise RemoteMethodError(self.name)
 
 
-    def __init__(self, client):
+    def __init__(self, client, async = False):
         self.client = client
+        self.async = async
 
     def __getitem__(self, method_name):
-        return self.RemoteMethod(self.client, method_name)
+        return self.RemoteMethod(self.client, method_name, self.async)
 
     def __getattr__(self, method_name):
         return self.__getitem__(method_name)
@@ -240,6 +244,7 @@ class Scene:
         self.proximity_sensors = self.objects.proximity_sensors
         self.vision_sensors = self.objects.vision_sensors
         self.shapes = self.objects.shapes
+        self.lights = self.objects.lights
         self.robots = ObjectsCollectionsProxy(self, robots.classes)
 
     def get_object(self, object_name):
@@ -304,9 +309,10 @@ class ObjectsProxy:
             binds.sim_joint_spherical_subtype : SphericalJoint,
             binds.sim_object_proximitysensor_type : ProximitySensor,
             binds.sim_object_visionsensor_type : VisionSensor,
-            binds.sim_object_shape_type : Shape
+            binds.sim_object_shape_type : Shape,
+            binds.sim_object_light_type : Light
         }
-        objects_info = self.client.remote_methods.get_objects_info()
+        objects_info = self.client.sync_remote_methods.get_objects_info()
         objects_info = [(object_handler, object_name, object_type) for object_handler, object_name, object_type in objects_info if object_type in self.bind_object_types]
 
         self.object_handlers = dict([(object_name, object_handler) for object_handler, object_name, object_type in objects_info])
@@ -318,7 +324,7 @@ class ObjectsProxy:
         self.proximity_sensors = TypedObjectsProxy(self, ProximitySensor)
         self.vision_sensors = TypedObjectsProxy(self, VisionSensor)
         self.shapes = TypedObjectsProxy(self, Shape)
-
+        self.lights = TypedObjectsProxy(self, Light)
 
 
     def get(self, object_name):

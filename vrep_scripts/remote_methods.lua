@@ -33,3 +33,25 @@ function get_objects_info()
     end
     return objects_info
 end
+
+
+-- Funciones para permitir a scripts externos manejar las luces de la escena vrep.
+
+function setLightState(light_handle, enabled)
+    if enabled then
+        state = 1
+    else
+        state = 0
+    end
+    simSetLightParameters(light_handle, state, nil, nil, nil)
+end
+
+function setLightDiffusePart(light_handle, color)
+    state, _, _ = simGetLightParameters(light_handle)
+    simSetLightParameters(light_handle, state, nil, color, nil)
+end
+
+function setLightSpecularPart(light_handle, color)
+    state, _, _ = simGetLightParameters(light_handle)
+    simSetLightParameters(light_handle, state, nil, nil, color)
+end
